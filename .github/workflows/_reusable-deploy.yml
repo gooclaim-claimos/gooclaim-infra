@@ -1,0 +1,87 @@
+# gooclaim-infra/.github/workflows/_reusable-deploy.yml
+#
+# MASTER DEPLOY WORKFLOW — sirf yahan update karo
+# ENV flow:
+#   develop merge → auto → dev
+#   manual dispatch → sdx
+#   main merge → auto → nprd
+#   manual dispatch + approval → prod
+
+name: Reusable Deploy
+
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+      sha:
+        required: true
+        type: string
+    secrets:
+      KUBE_CONFIG:
+        required: true
+      GHCR_TOKEN:
+        required: true
+
+jobs:
+
+  build-and-push:
+    name: Build & push → ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/gooclaim-claimos/${{ inputs.service-name }}:${{ inputs.sha }}
+            ghcr.io/gooclaim-claimos/${{ inputs.service-name }}:${{ inputs.environment }}-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_ENV=${{ inputs.environment }}
+            BUILD_SHA=${{ inputs.sha }}
+
+  deploy:
+    name: Deploy → ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment:
+      name: ${{ inputs.environment }}
+      url: https://${{ inputs.environment }}.gooclaim.internal
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy ${{ inputs.service-name }} to ${{ inputs.environment }}
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+          NAMESPACE="gooclaim-${{ inputs.environment }}"
+          IMAGE="ghcr.io/gooclaim-claimos/${{ inputs.service-name }}:${{ inputs.sha }}"
+
+          kubectl set image deployment/${{ inputs.service-name }} \
+            ${{ inputs.service-name }}=$IMAGE \
+            -n $NAMESPACE
+
+          kubectl rollout status deployment/${{ inputs.service-name }} \
+            -n $NAMESPACE \
+            --timeout=120s
+
+          echo "Deployed ${{ inputs.service-name }} → ${{ inputs.environment }}"
