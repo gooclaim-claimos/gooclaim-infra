@@ -72,10 +72,15 @@ sed -i "s/gooclaim-service/$SERVICE/g" "$DEST"/.github/workflows/deploy.yml
 cat > "$DEST"/.claude/settings.json <<EOF
 {
   "hooks": {
-    "pre-tool-use": [
+    "PreToolUse": [
       {
-        "matcher": "Write|Edit",
-        "hooks": [".claude/hooks/check-no-secrets.sh"]
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/check-no-secrets.sh"
+          }
+        ]
       }
     ]
   }

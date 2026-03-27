@@ -1,9 +1,14 @@
 {
   "hooks": {
-    "pre-tool-use": [
+    "PreToolUse": [
       {
-        "matcher": "Write|Edit",
-        "hooks": [".claude/hooks/check-no-secrets.sh"]
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/check-no-secrets.sh"
+          }
+        ]
       }
     ]
   }

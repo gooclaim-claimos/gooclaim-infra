@@ -9,7 +9,7 @@
 #   bash scripts/sync-rules.sh --check            → dry run, show what would change
 #
 # Run from: gooclaim-infra root
-# When to run: after updating any file in templates/.claude/rules/ or templates/.claude/skills/
+# When to run: after updating any file in templates/.claude/ or .claude/hooks/
 
 set -e
 
@@ -97,6 +97,34 @@ sync_file() {
   fi
 }
 
+# Helper: sync raw file by content (for non-versioned files like JSON/shell hooks)
+sync_raw_file() {
+  local src="$1"
+  local dest="$2"
+  local label="$3"
+
+  if [ ! -f "$dest" ]; then
+    if [ "$DRY_RUN" = true ]; then
+      echo "  [NEW]    $label"
+    else
+      cp "$src" "$dest"
+      echo "  [NEW]    $label"
+    fi
+    UPDATED=$((UPDATED + 1))
+  elif cmp -s "$src" "$dest"; then
+    echo "  [OK]     $label"
+    SKIPPED=$((SKIPPED + 1))
+  else
+    if [ "$DRY_RUN" = true ]; then
+      echo "  [UPDATE] $label"
+    else
+      cp "$src" "$dest"
+      echo "  [UPDATE] $label"
+    fi
+    UPDATED=$((UPDATED + 1))
+  fi
+}
+
 # ─── Layer rule mapping ───────────────────────────────────
 get_layer_rule() {
   local repo="$1"
@@ -165,10 +193,16 @@ for REPO in "${ALL_REPOS[@]}"; do
   done
 
   # Sync hooks
-  sync_file \
+  sync_raw_file \
     ".claude/hooks/check-no-secrets.sh" \
     "$REPO_PATH/.claude/hooks/check-no-secrets.sh" \
     "hooks/check-no-secrets.sh"
+
+  # Sync Claude settings (hook schema, matchers, etc.)
+  sync_raw_file \
+    ".claude/settings.json" \
+    "$REPO_PATH/.claude/settings.json" \
+    "settings.json"
 
 done
 
