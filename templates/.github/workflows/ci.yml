@@ -1,0 +1,26 @@
+# .github/workflows/ci.yml
+# Yeh file har service repo mein hogi — sirf service-name change karo
+# Baaki sab gooclaim-infra/_reusable-ci.yml se aata hai
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: gooclaim-claimos/gooclaim-infra/.github/workflows/_reusable-ci.yml@main
+    with:
+      service-name: gooclaim-gateway      # ← SIRF YEH CHANGE KARO har repo mein
+      python-version: "3.12"
+      coverage-threshold: 80
+      skip-docker: false
+    secrets:
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}

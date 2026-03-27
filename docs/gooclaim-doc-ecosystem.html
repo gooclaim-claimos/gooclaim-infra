@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gooclaim — Documentation Ecosystem</title>
+<style>
+  :root {
+    --color-text-primary: #1a1a18;
+    --color-text-secondary: #5f5e5a;
+    --color-background-primary: #ffffff;
+    --color-border-tertiary: rgba(0,0,0,0.12);
+    --color-border-secondary: rgba(0,0,0,0.25);
+    --font-sans: system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-text-primary: #e8e6de;
+      --color-text-secondary: #9c9a92;
+      --color-background-primary: #1c1c1a;
+      --color-border-tertiary: rgba(255,255,255,0.1);
+      --color-border-secondary: rgba(255,255,255,0.22);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--color-background-primary);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  svg { max-width: 680px; width: 100%; }
+
+  .t  { font-family: var(--font-sans); font-size: 14px; font-weight: 400; fill: var(--color-text-primary); }
+  .ts { font-family: var(--font-sans); font-size: 12px; font-weight: 400; fill: var(--color-text-secondary); }
+  .th { font-family: var(--font-sans); font-size: 14px; font-weight: 500; fill: var(--color-text-primary); }
+  .arr { fill: none; stroke: var(--color-border-secondary); stroke-width: 1.5; }
+
+  .c-purple { fill: #EEEDFE; stroke: #534AB7; }
+  .c-purple .th, .c-purple .t  { fill: #26215C; }
+  .c-purple .ts { fill: #534AB7; }
+  .c-teal   { fill: #E1F5EE; stroke: #0F6E56; }
+  .c-teal   .th, .c-teal   .t  { fill: #085041; }
+  .c-teal   .ts { fill: #0F6E56; }
+  .c-coral  { fill: #FAECE7; stroke: #993C1D; }
+  .c-coral  .th, .c-coral  .t  { fill: #4A1B0C; }
+  .c-coral  .ts { fill: #993C1D; }
+  .c-gray   { fill: #F1EFE8; stroke: #5F5E5A; }
+  .c-gray   .th, .c-gray   .t  { fill: #2C2C2A; }
+  .c-gray   .ts { fill: #5F5E5A; }
+
+  @media (prefers-color-scheme: dark) {
+    .c-purple { fill: #26215C; stroke: #AFA9EC; }
+    .c-purple .th, .c-purple .t  { fill: #CECBF6; }
+    .c-purple .ts { fill: #AFA9EC; }
+    .c-teal   { fill: #085041; stroke: #5DCAA5; }
+    .c-teal   .th, .c-teal   .t  { fill: #9FE1CB; }
+    .c-teal   .ts { fill: #5DCAA5; }
+    .c-coral  { fill: #4A1B0C; stroke: #F0997B; }
+    .c-coral  .th, .c-coral  .t  { fill: #F5C4B3; }
+    .c-coral  .ts { fill: #F0997B; }
+    .c-gray   { fill: #2C2C2A; stroke: #B4B2A9; }
+    .c-gray   .th, .c-gray   .t  { fill: #D3D1C7; }
+    .c-gray   .ts { fill: #B4B2A9; }
+  }
+
+  .node { cursor: pointer; }
+  .node:hover rect { opacity: 0.82; }
+</style>
+</head>
+<body>
+<svg width="100%" viewBox="0 0 680 580">
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+</defs>
+
+<text class="th" x="340" y="28" text-anchor="middle" font-size="15">Gooclaim — documentation ecosystem</text>
+<text class="ts" x="340" y="46" text-anchor="middle">Who reads what, where it lives</text>
+
+<!-- Source -->
+<g class="c-gray"><rect x="255" y="64" width="170" height="44" rx="8" stroke-width="0.5"/><text class="th" x="340" y="86" text-anchor="middle" dominant-baseline="central">Gooclaim codebase</text></g>
+
+<!-- Audience headers -->
+<g class="c-purple"><rect x="30" y="148" width="185" height="34" rx="8" stroke-width="0.5"/><text class="th" x="123" y="165" text-anchor="middle" dominant-baseline="central">Internal engineers</text></g>
+<line x1="290" y1="108" x2="145" y2="148" class="arr" marker-end="url(#arrow)"/>
+
+<g class="c-teal"><rect x="248" y="148" width="185" height="34" rx="8" stroke-width="0.5"/><text class="th" x="341" y="165" text-anchor="middle" dominant-baseline="central">TPA / integrators</text></g>
+<line x1="340" y1="108" x2="340" y2="148" class="arr" marker-end="url(#arrow)"/>
+
+<g class="c-coral"><rect x="466" y="148" width="185" height="34" rx="8" stroke-width="0.5"/><text class="th" x="559" y="165" text-anchor="middle" dominant-baseline="central">IRDAI / compliance</text></g>
+<line x1="390" y1="108" x2="535" y2="148" class="arr" marker-end="url(#arrow)"/>
+
+<!-- Divider -->
+<line x1="40" y1="202" x2="640" y2="202" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
+<text class="ts" x="340" y="216" text-anchor="middle" opacity="0.45">doc types per audience</text>
+
+<!-- Internal engineer docs -->
+<g class="node c-purple"><rect x="30" y="228" width="185" height="56" rx="8" stroke-width="0.5"/><text class="th" x="123" y="249" text-anchor="middle" dominant-baseline="central">API contract</text><text class="ts" x="123" y="268" text-anchor="middle" dominant-baseline="central">OpenAPI 3.1 per service</text></g>
+<g class="node c-purple"><rect x="30" y="300" width="185" height="56" rx="8" stroke-width="0.5"/><text class="th" x="123" y="321" text-anchor="middle" dominant-baseline="central">ADR</text><text class="ts" x="123" y="340" text-anchor="middle" dominant-baseline="central">Architecture decisions log</text></g>
+<g class="node c-purple"><rect x="30" y="372" width="185" height="56" rx="8" stroke-width="0.5"/><text class="th" x="123" y="393" text-anchor="middle" dominant-baseline="central">Dev memory</text><text class="ts" x="123" y="412" text-anchor="middle" dominant-baseline="central">CLAUDE.md + SESSION.md</text></g>
+<g class="node c-purple"><rect x="30" y="444" width="185" height="56" rx="8" stroke-width="0.5"/><text class="th" x="123" y="465" text-anchor="middle" dominant-baseline="central">Runbooks</text><text class="ts" x="123" y="484" text-anchor="middle" dominant-baseline="central">Ops + incident playbooks</text></g>
+
+<!-- TPA / integrator docs -->
+<g class="node c-teal"><rect x="248" y="228" width="185" height="56" rx="8" stroke-width="0.5"/><text class="th" x="341" y="249" text-anchor="middle" dominant-baseline="central">API reference</text><text class="ts" x="341" y="268" text-anchor="middle" dominant-baseline="central">Endpoints, payloads, errors</text></g>
+<g class="node c-teal"><rect x="248" y="300" width="185" height="56" rx="8" stroke-width="0.5"/><text class="th" x="341" y="321" text-anchor="middle" dominant-baseline="central">Integration guide</text><text class="ts" x="341" y="340" text-anchor="middle" dominant-baseline="central">Step-by-step onboarding</text></g>
+<g class="node c-teal"><rect x="248" y="372" width="185" height="56" rx="8" stroke-width="0.5"/><text class="th" x="341" y="393" text-anchor="middle" dominant-baseline="central">Webhook reference</text><text class="ts" x="341" y="412" text-anchor="middle" dominant-baseline="central">Events, retries, signatures</text></g>
+<g class="node c-teal"><rect x="248" y="444" width="185" height="56" rx="8" stroke-width="0.5"/><text class="th" x="341" y="465" text-anchor="middle" dominant-baseline="central">Changelog</text><text class="ts" x="341" y="484" text-anchor="middle" dominant-baseline="central">Breaking changes, versions</text></g>
+
+<!-- IRDAI / compliance docs -->
+<g class="node c-coral"><rect x="466" y="228" width="185" height="56" rx="8" stroke-width="0.5"/><text class="th" x="559" y="249" text-anchor="middle" dominant-baseline="central">Audit trail spec</text><text class="ts" x="559" y="268" text-anchor="middle" dominant-baseline="central">Event log + 7yr retention</text></g>
+<g class="node c-coral"><rect x="466" y="300" width="185" height="56" rx="8" stroke-width="0.5"/><text class="th" x="559" y="321" text-anchor="middle" dominant-baseline="central">Data flow diagram</text><text class="ts" x="559" y="340" text-anchor="middle" dominant-baseline="central">PHI flows, DPDP mapping</text></g>
+<g class="node c-coral"><rect x="466" y="372" width="185" height="56" rx="8" stroke-width="0.5"/><text class="th" x="559" y="393" text-anchor="middle" dominant-baseline="central">Security policy</text><text class="ts" x="559" y="412" text-anchor="middle" dominant-baseline="central">Hardening, mTLS, vault</text></g>
+<g class="node c-coral"><rect x="466" y="444" width="185" height="56" rx="8" stroke-width="0.5"/><text class="th" x="559" y="465" text-anchor="middle" dominant-baseline="central">Consent register</text><text class="ts" x="559" y="484" text-anchor="middle" dominant-baseline="central">DPDP 2023 compliance</text></g>
+
+<!-- Bottom -->
+<line x1="40" y1="550" x2="640" y2="550" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
+<text class="ts" x="123" y="565" text-anchor="middle" opacity="0.6">P1 — before coding</text>
+<text class="ts" x="341" y="565" text-anchor="middle" opacity="0.6">P1 — before pilot</text>
+<text class="ts" x="559" y="565" text-anchor="middle" opacity="0.6">P2 — before go-live</text>
+</svg>
+</body>
+</html>

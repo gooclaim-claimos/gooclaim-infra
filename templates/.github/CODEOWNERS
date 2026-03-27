@@ -1,0 +1,9 @@
+# Global — all PRs require review from core team
+* @gooclaim-claimos/core-team
+
+# Sensitive files — compliance + security
+src/policy/             @gooclaim-claimos/core-team
+src/audit/              @gooclaim-claimos/core-team
+config/languages.yml    @gooclaim-claimos/core-team
+workflows/registry.yml  @gooclaim-claimos/core-team
+.github/                @gooclaim-claimos/core-team

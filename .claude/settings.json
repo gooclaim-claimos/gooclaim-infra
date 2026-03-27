@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "pre-tool-use": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [".claude/hooks/check-no-secrets.sh"]
+      }
+    ]
+  }
+}

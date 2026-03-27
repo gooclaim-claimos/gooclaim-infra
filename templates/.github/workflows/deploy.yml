@@ -1,0 +1,45 @@
+# .github/workflows/deploy.yml
+# Yeh file har service repo mein hogi — sirf service-name change karo
+# Baaki sab gooclaim-infra/_reusable-deploy.yml se aata hai
+
+name: Deploy
+
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options: [dev, sdx, nprd, prod]
+
+jobs:
+
+  resolve-env:
+    name: Resolve target env
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set.outputs.environment }}
+    steps:
+      - id: set
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "environment=nprd" >> $GITHUB_OUTPUT
+          fi
+
+  deploy:
+    needs: resolve-env
+    uses: gooclaim-claimos/gooclaim-infra/.github/workflows/_reusable-deploy.yml@main
+    with:
+      service-name: gooclaim-gateway      # ← SIRF YEH CHANGE KARO har repo mein
+      environment: ${{ needs.resolve-env.outputs.environment }}
+      sha: ${{ github.sha }}
+    secrets:
+      KUBE_CONFIG: ${{ secrets[format('{0}_KUBE_CONFIG', upper(needs.resolve-env.outputs.environment))] }}
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}

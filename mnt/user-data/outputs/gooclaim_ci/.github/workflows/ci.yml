@@ -1,0 +1,179 @@
+# .github/workflows/ci.yml
+# Runs on every PR and push to main/develop
+# ALL checks must pass before merge is allowed
+# Branch protection enforces this — cannot be bypassed
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true          # cancel old run if new push comes in
+
+jobs:
+
+  # ─────────────────────────────────────────
+  # JOB 1 — LINT
+  # Fast gate — fails in ~10s if code style wrong
+  # ─────────────────────────────────────────
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install tox
+      - run: tox -e lint
+
+  # ─────────────────────────────────────────
+  # JOB 2 — TYPE CHECK
+  # ─────────────────────────────────────────
+  typecheck:
+    name: Type check (pyright)
+    runs-on: ubuntu-latest
+    needs: lint                      # don't waste time if lint fails
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install tox
+      - run: tox -e typecheck
+
+  # ─────────────────────────────────────────
+  # JOB 3 — SECURITY SCAN
+  # bandit (code) + safety (deps) + trufflehog (secrets in git)
+  # ─────────────────────────────────────────
+  security:
+    name: Security scan
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0             # trufflehog needs full git history
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install tox
+      - run: tox -e security
+
+      # TruffleHog — scans git history for leaked secrets
+      # Runs as separate step (not via tox) — it's a Go binary
+      - name: TruffleHog scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified   # only flag verified leaks, not just patterns
+
+  # ─────────────────────────────────────────
+  # JOB 4 — TEST + COVERAGE
+  # pytest with 80% coverage gate
+  # Uploads coverage report as artifact + to PR comment
+  # ─────────────────────────────────────────
+  test:
+    name: Test + coverage (≥80%)
+    runs-on: ubuntu-latest
+    needs: [typecheck, security]
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_USER: gooclaim
+          POSTGRES_DB: gooclaim_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+
+    env:
+      DATABASE_URL: postgresql://gooclaim:testpass@localhost:5432/gooclaim_test
+      REDIS_URL: redis://localhost:6379
+      ENV: test
+      # Real secrets are NOT here — tests use mocks/stubs for Azure OAI, CMS connectors
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install tox
+      - run: tox -e test
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: htmlcov/
+
+      - name: Coverage comment on PR
+        uses: py-cov-action/python-coverage-comment-action@v3
+        if: github.event_name == 'pull_request'
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─────────────────────────────────────────
+  # JOB 5 — DOCKER BUILD CHECK
+  # Verifies Docker image builds without errors
+  # Does NOT push — that happens in deploy workflow
+  # ─────────────────────────────────────────
+  docker-build:
+    name: Docker build check
+    runs-on: ubuntu-latest
+    needs: test
+    strategy:
+      matrix:
+        service:
+          - l0-channel-gateway
+          - l1-workflow-engine
+          - l2-truth-layer
+          - l3-knowledge-layer
+          - l5-outbound-engine
+          - l6-policy-gate
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build ${{ matrix.service }}
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/${{ matrix.service }}
+          push: false                # build only, no push
+          tags: gooclaim/${{ matrix.service }}:pr-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

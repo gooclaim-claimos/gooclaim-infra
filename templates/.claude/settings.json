@@ -1,0 +1,12 @@
+{
+  "rules": [
+    { "file": ".claude/rules/l0-gateway.md",   "glob": "src/gateway/**" },
+    { "file": ".claude/rules/l1-workflow.md",  "glob": "src/engine/**" },
+    { "file": ".claude/rules/l2-truth.md",     "glob": "src/truth/**" },
+    { "file": ".claude/rules/l3-knowledge.md", "glob": "src/knowledge/**" },
+    { "file": ".claude/rules/l4-learning.md",  "glob": "src/learning/**" },
+    { "file": ".claude/rules/l5-outbound.md",  "glob": "src/outbound/**" },
+    { "file": ".claude/rules/l6-policy.md",    "glob": "src/policy/**" },
+    { "file": ".claude/rules/l7-observe.md",   "glob": "src/observe/**" }
+  ]
+}

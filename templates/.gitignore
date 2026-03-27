@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+
+# Testing
+.tox/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.coveragerc
+
+# Type checking
+.pyright/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Secrets — never commit these
+*.pem
+*.key
+*.p12
+*.pfx
+.env.*
+secrets.yml
+secrets.yaml
+kubeconfig
+*kubeconfig*
+
+# Generated
+/generated/
+*_pb2.py
+*_pb2_grpc.py
