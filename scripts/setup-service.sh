@@ -125,6 +125,50 @@ EOF
 touch "$DEST"/tests/unit/.gitkeep
 touch "$DEST"/tests/integration/.gitkeep
 
+# ─── README skeleton ──────────────────────────────────────
+cat > "$DEST"/README.md <<EOF
+# $SERVICE
+
+> Part of [Gooclaim](https://github.com/gooclaim-claimos) — India's Claims OS
+
+## What this service does
+
+TODO: Add one-line description.
+
+## Quick start
+
+\`\`\`bash
+pip install tox
+tox -e test          # run tests
+tox                  # lint + typecheck + security + test
+\`\`\`
+
+## Docs
+
+See [docs/00-overview.md](docs/00-overview.md) — run \`/docs\` in Claude Code to generate full docs.
+
+## CI status
+
+![Coverage](badges/coverage.svg)
+EOF
+
+# ─── .env.example ─────────────────────────────────────────
+cat > "$DEST"/.env.example <<EOF
+# Copy to .env and fill in values
+# Never commit .env — it's in .gitignore
+
+ENV=dev
+LOG_LEVEL=INFO
+
+# Database
+DATABASE_URL=postgresql://gooclaim:password@localhost:5432/gooclaim_dev
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# Add service-specific vars below
+EOF
+
 # ─── Done ─────────────────────────────────────────────────
 echo ""
 echo "✓ $SERVICE scaffolded at $DEST"
@@ -139,6 +183,7 @@ echo "  .claude/skills/                        (4 skills)"
 echo "  src/$SERVICE/main.py                   (FastAPI skeleton)"
 echo "  tests/conftest.py                      (pytest config)"
 echo "  Dockerfile, tox.ini, pyproject.toml"
+echo "  README.md, .env.example"
 echo ""
 echo "Next steps:"
 echo "  1. Update CLAUDE.md with layer-specific context"

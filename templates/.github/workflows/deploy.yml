@@ -37,7 +37,7 @@ jobs:
     needs: resolve-env
     uses: gooclaim-claimos/gooclaim-infra/.github/workflows/_reusable-deploy.yml@main
     with:
-      service-name: gooclaim-gateway      # ← SIRF YEH CHANGE KARO har repo mein
+      service-name: gooclaim-service      # ← SIRF YEH CHANGE KARO har repo mein
       environment: ${{ needs.resolve-env.outputs.environment }}
       sha: ${{ github.sha }}
     secrets:
