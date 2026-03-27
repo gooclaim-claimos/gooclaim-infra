@@ -16,6 +16,10 @@ if [ -z "$SERVICE" ]; then
   exit 1
 fi
 
+# Python package name — hyphens → underscores
+# gooclaim-engine → gooclaim_engine
+PACKAGE=$(echo "$SERVICE" | tr '-' '_')
+
 DEST="../$SERVICE"
 
 if [ -d "$DEST" ]; then
@@ -44,10 +48,10 @@ mkdir -p "$DEST"/.github/PULL_REQUEST_TEMPLATE
 mkdir -p "$DEST"/.claude/rules
 mkdir -p "$DEST"/.claude/skills
 mkdir -p "$DEST"/.claude/hooks
-mkdir -p "$DEST"/src/"$SERVICE"/routes
-mkdir -p "$DEST"/src/"$SERVICE"/services
-mkdir -p "$DEST"/src/"$SERVICE"/models
-mkdir -p "$DEST"/src/"$SERVICE"/connectors
+mkdir -p "$DEST"/src/"$PACKAGE"/routes
+mkdir -p "$DEST"/src/"$PACKAGE"/services
+mkdir -p "$DEST"/src/"$PACKAGE"/models
+mkdir -p "$DEST"/src/"$PACKAGE"/connectors
 mkdir -p "$DEST"/migrations
 mkdir -p "$DEST"/tests/unit
 mkdir -p "$DEST"/tests/integration
@@ -102,14 +106,14 @@ cp templates/CLAUDE_SESSION.md "$DEST"/CLAUDE_SESSION.md
 cp templates/Dockerfile     "$DEST"/Dockerfile
 
 # ─── Source skeleton ──────────────────────────────────────
-touch "$DEST"/src/"$SERVICE"/__init__.py
-touch "$DEST"/src/"$SERVICE"/routes/__init__.py
-touch "$DEST"/src/"$SERVICE"/services/__init__.py
-touch "$DEST"/src/"$SERVICE"/models/__init__.py
-touch "$DEST"/src/"$SERVICE"/connectors/__init__.py
+touch "$DEST"/src/"$PACKAGE"/__init__.py
+touch "$DEST"/src/"$PACKAGE"/routes/__init__.py
+touch "$DEST"/src/"$PACKAGE"/services/__init__.py
+touch "$DEST"/src/"$PACKAGE"/models/__init__.py
+touch "$DEST"/src/"$PACKAGE"/connectors/__init__.py
 touch "$DEST"/migrations/.gitkeep
 
-cat > "$DEST"/src/"$SERVICE"/config.py <<EOF
+cat > "$DEST"/src/"$PACKAGE"/config.py <<EOF
 from pydantic_settings import BaseSettings
 
 
@@ -128,7 +132,7 @@ class Settings(BaseSettings):
 settings = Settings()
 EOF
 
-cat > "$DEST"/src/"$SERVICE"/main.py <<EOF
+cat > "$DEST"/src/"$PACKAGE"/main.py <<EOF
 from fastapi import FastAPI
 
 from .config import settings
@@ -271,7 +275,7 @@ if [ -n "$LAYER_RULE" ]; then
 echo "  .claude/rules/$LAYER_RULE              (layer rules)"
 fi
 echo "  .claude/skills/                        (4 skills)"
-echo "  src/$SERVICE/main.py                   (FastAPI skeleton)"
+echo "  src/$PACKAGE/main.py                   (FastAPI skeleton)"
 echo "  tests/conftest.py                      (pytest config)"
 echo "  Dockerfile, tox.ini, pyproject.toml"
 echo "  README.md, .env.example"
