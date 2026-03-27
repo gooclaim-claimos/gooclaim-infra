@@ -23,46 +23,130 @@ if [ -d "$DEST" ]; then
   exit 1
 fi
 
+# Detect which layer rule to copy based on service name
+case "$SERVICE" in
+  *gateway*)  LAYER_RULE="l0-gateway.md" ;;
+  *engine*)   LAYER_RULE="l1-workflow.md" ;;
+  *truth*)    LAYER_RULE="l2-truth.md" ;;
+  *knowledge*)LAYER_RULE="l3-knowledge.md" ;;
+  *learning*) LAYER_RULE="l4-learning.md" ;;
+  *outbound*) LAYER_RULE="l5-outbound.md" ;;
+  *policy*)   LAYER_RULE="l6-policy.md" ;;
+  *observe*)  LAYER_RULE="l7-observe.md" ;;
+  *)          LAYER_RULE="" ;;
+esac
+
 echo "Scaffolding $SERVICE..."
 
-# Create directory structure
+# ─── Directory structure ──────────────────────────────────
 mkdir -p "$DEST"/.github/workflows
 mkdir -p "$DEST"/.github/PULL_REQUEST_TEMPLATE
 mkdir -p "$DEST"/.claude/rules
+mkdir -p "$DEST"/.claude/skills
+mkdir -p "$DEST"/.claude/hooks
 mkdir -p "$DEST"/src/"$SERVICE"
 mkdir -p "$DEST"/tests/unit
 mkdir -p "$DEST"/tests/integration
+mkdir -p "$DEST"/badges
 
-# Copy GitHub templates
-cp templates/.github/workflows/ci.yml     "$DEST"/.github/workflows/ci.yml
-cp templates/.github/workflows/deploy.yml "$DEST"/.github/workflows/deploy.yml
-cp templates/.github/CODEOWNERS           "$DEST"/.github/CODEOWNERS
-cp templates/.github/PULL_REQUEST_TEMPLATE/default.md "$DEST"/.github/PULL_REQUEST_TEMPLATE/default.md
-
-# Copy Claude Code templates
-cp templates/.claude/settings.json        "$DEST"/.claude/settings.json
-
-# Copy project files
-cp templates/tox.ini                      "$DEST"/tox.ini
-cp templates/pyproject.toml               "$DEST"/pyproject.toml
-cp templates/.gitignore                   "$DEST"/.gitignore
-cp templates/CLAUDE.md                    "$DEST"/CLAUDE.md
-cp templates/CLAUDE_SESSION.md            "$DEST"/CLAUDE_SESSION.md
+# ─── GitHub templates ─────────────────────────────────────
+cp templates/.github/workflows/ci.yml                        "$DEST"/.github/workflows/ci.yml
+cp templates/.github/workflows/deploy.yml                    "$DEST"/.github/workflows/deploy.yml
+cp templates/.github/CODEOWNERS                              "$DEST"/.github/CODEOWNERS
+cp templates/.github/PULL_REQUEST_TEMPLATE/default.md        "$DEST"/.github/PULL_REQUEST_TEMPLATE/default.md
 
 # Update service-name in workflow files
-sed -i "s/gooclaim-gateway/$SERVICE/g" "$DEST"/.github/workflows/ci.yml
-sed -i "s/gooclaim-gateway/$SERVICE/g" "$DEST"/.github/workflows/deploy.yml
+sed -i "s/gooclaim-service/$SERVICE/g" "$DEST"/.github/workflows/ci.yml
+sed -i "s/gooclaim-service/$SERVICE/g" "$DEST"/.github/workflows/deploy.yml
 
+# ─── Claude Code setup ────────────────────────────────────
+# settings.json (hooks config)
+cat > "$DEST"/.claude/settings.json <<EOF
+{
+  "hooks": {
+    "pre-tool-use": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [".claude/hooks/check-no-secrets.sh"]
+      }
+    ]
+  }
+}
+EOF
+
+# Secret check hook
+cp .claude/hooks/check-no-secrets.sh "$DEST"/.claude/hooks/check-no-secrets.sh
+chmod +x "$DEST"/.claude/hooks/check-no-secrets.sh
+
+# Layer-specific rule (auto-detected)
+if [ -n "$LAYER_RULE" ]; then
+  cp "templates/.claude/rules/$LAYER_RULE" "$DEST"/.claude/rules/"$LAYER_RULE"
+fi
+
+# Skills — all 4
+cp templates/.claude/skills/docs.md         "$DEST"/.claude/skills/docs.md
+cp templates/.claude/skills/new-adr.md      "$DEST"/.claude/skills/new-adr.md
+cp templates/.claude/skills/session-end.md  "$DEST"/.claude/skills/session-end.md
+cp templates/.claude/skills/test.md         "$DEST"/.claude/skills/test.md
+
+# ─── Project files ────────────────────────────────────────
+cp templates/tox.ini        "$DEST"/tox.ini
+cp templates/pyproject.toml "$DEST"/pyproject.toml
+cp templates/.gitignore     "$DEST"/.gitignore
+cp templates/CLAUDE.md      "$DEST"/CLAUDE.md
+cp templates/CLAUDE_SESSION.md "$DEST"/CLAUDE_SESSION.md
+cp templates/Dockerfile     "$DEST"/Dockerfile
+
+# ─── Source skeleton ──────────────────────────────────────
+touch "$DEST"/src/"$SERVICE"/__init__.py
+
+cat > "$DEST"/src/"$SERVICE"/main.py <<EOF
+from fastapi import FastAPI
+
+app = FastAPI(title="$SERVICE")
+
+
+@app.get("/health")
+async def health() -> dict:
+    return {"status": "ok", "service": "$SERVICE"}
+EOF
+
+# ─── Test skeleton ────────────────────────────────────────
+cat > "$DEST"/tests/conftest.py <<EOF
+import pytest
+
+
+# Add shared fixtures here
+# Example:
+# @pytest.fixture
+# def db_session(): ...
+EOF
+
+touch "$DEST"/tests/unit/.gitkeep
+touch "$DEST"/tests/integration/.gitkeep
+
+# ─── Done ─────────────────────────────────────────────────
 echo ""
-echo "Done. $SERVICE scaffolded at $DEST"
+echo "✓ $SERVICE scaffolded at $DEST"
+echo ""
+echo "What was created:"
+echo "  .github/workflows/ci.yml + deploy.yml  (caller files)"
+echo "  .claude/hooks/check-no-secrets.sh      (secret blocker)"
+if [ -n "$LAYER_RULE" ]; then
+echo "  .claude/rules/$LAYER_RULE              (layer rules)"
+fi
+echo "  .claude/skills/                        (4 skills)"
+echo "  src/$SERVICE/main.py                   (FastAPI skeleton)"
+echo "  tests/conftest.py                      (pytest config)"
+echo "  Dockerfile, tox.ini, pyproject.toml"
 echo ""
 echo "Next steps:"
-echo "  1. Copy the relevant .claude/rules/l{n}-{layer}.md into $DEST/.claude/rules/"
-echo "  2. Update $DEST/CLAUDE.md with layer-specific context"
-echo "  3. cd $DEST"
-echo "  4. git init"
-echo "  5. git remote add origin https://github.com/gooclaim-claimos/$SERVICE.git"
-echo "  6. git checkout -b main && git add . && git commit -m 'chore: initial project setup'"
+echo "  1. Update CLAUDE.md with layer-specific context"
+echo "  2. cd $DEST"
+echo "  3. git init"
+echo "  4. git remote add origin https://github.com/gooclaim-claimos/$SERVICE.git"
+echo "  5. git checkout -b main"
+echo "  6. git add . && git commit -m 'chore: initial project setup'"
 echo "  7. git push -u origin main"
 echo "  8. git checkout -b develop && git push -u origin develop"
-echo "  9. Set branch protection rules and environments on GitHub."
+echo "  9. Set branch protection + environments on GitHub"
