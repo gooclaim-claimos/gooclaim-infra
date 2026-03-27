@@ -1,62 +1,32 @@
-# gooclaim-infra/templates/
-# Yahan se copy karo jab naya service repo banao
-# Sirf service-name update karna hai baaki sab same rahega
+# gooclaim-infra
 
-## Files to copy to every new service repo
+Central infrastructure repository for Gooclaim — CI/CD pipelines, service templates, and architecture documentation.
 
-```
-templates/
-├── workflows/
-│   ├── ci.yml           → .github/workflows/ci.yml
-│   └── deploy.yml       → .github/workflows/deploy.yml
-├── tox.ini              → tox.ini
-├── pyproject.toml       → pyproject.toml
-├── Dockerfile           → Dockerfile
-├── CLAUDE_SESSION.md    → CLAUDE_SESSION.md
-└── pull_request_template.md → .github/PULL_REQUEST_TEMPLATE/pull_request_template.md
-```
+## What's in here
 
-## One command setup (jab repo clone karo)
+| Directory | Purpose |
+|-----------|---------|
+| `.github/workflows/` | Reusable CI and deploy workflows — all service repos call these |
+| `templates/` | Scaffold for every new service repo |
+| `docs/` | Architecture, repo registry, runbooks, ADRs |
+| `scripts/` | Utility scripts |
+
+## Creating a new service repo
 
 ```bash
-# Naya service repo setup karne ka script
-# Usage: bash setup-service.sh gooclaim-gateway
-# Run karo: gooclaim-infra root se
-
-SERVICE=$1
-
-if [ -z "$SERVICE" ]; then
-  echo "Usage: bash setup-service.sh <service-name>"
-  echo "Example: bash setup-service.sh gooclaim-gateway"
-  exit 1
-fi
-
-echo "Setting up $SERVICE..."
-
-# Directories
-mkdir -p ../$SERVICE/.github/workflows
-mkdir -p ../$SERVICE/.github/PULL_REQUEST_TEMPLATE
-mkdir -p ../$SERVICE/src/$SERVICE
-mkdir -p ../$SERVICE/tests/unit
-mkdir -p ../$SERVICE/tests/integration
-
-# Copy templates
-cp templates/workflows/ci.yml ../$SERVICE/.github/workflows/ci.yml
-cp templates/workflows/deploy.yml ../$SERVICE/.github/workflows/deploy.yml
-cp templates/tox.ini ../$SERVICE/tox.ini
-cp templates/pyproject.toml ../$SERVICE/pyproject.toml
-cp templates/Dockerfile ../$SERVICE/Dockerfile
-cp templates/CLAUDE_SESSION.md ../$SERVICE/CLAUDE_SESSION.md
-cp templates/pull_request_template.md ../$SERVICE/.github/PULL_REQUEST_TEMPLATE/pull_request_template.md
-
-# Update service-name in workflows
-sed -i "s/gooclaim-gateway/$SERVICE/g" ../$SERVICE/.github/workflows/ci.yml
-sed -i "s/gooclaim-gateway/$SERVICE/g" ../$SERVICE/.github/workflows/deploy.yml
-
-echo "Done. Now:"
-echo "  1. cd ../$SERVICE"
-echo "  2. Update CLAUDE.md with layer-specific rules"
-echo "  3. git init && git remote add origin https://github.com/gooclaim/$SERVICE"
-echo "  4. git checkout -b develop"
-echo "  5. git push -u origin develop"
+bash scripts/setup-service.sh gooclaim-<service>
 ```
+
+Then follow the printed steps — branch protection and environments still need to be set on GitHub manually.
+
+## Repo registry
+
+See [docs/repos.md](docs/repos.md) for the full list of Phase 1 and Phase 2 repos.
+
+## Architecture
+
+See [docs/architecture.md](docs/architecture.md) for the layer → repo mapping and data flow.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for branch strategy, commit conventions, and PR rules.
