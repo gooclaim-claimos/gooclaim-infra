@@ -1,3 +1,4 @@
+<!-- rules-version: 1.0 -->
 ## L4 — Learning Loop Rules
 
 - L4 is offline only: never handles live user requests; zero runtime latency impact allowed

@@ -1,4 +1,5 @@
 ---
+rules-version: "1.0"
 description: Generate test files mirroring the src/ folder structure. Creates unit tests for every module and integration tests for every connector. Usage: /test or /test src/gateway/webhook.py
 ---
 

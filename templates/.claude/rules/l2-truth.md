@@ -1,3 +1,4 @@
+<!-- rules-version: 1.0 -->
 ## L2 — Truth Layer Rules
 
 - No source, no answer: readiness STALE, NOT_CONNECTED, or PARTIAL = fail closed; never serve uncertain data

@@ -1,3 +1,4 @@
+<!-- rules-version: 1.0 -->
 ## L1 — Workflow Engine Rules
 
 - Operational mode check is Step 0a — before everything else; SUSPENDED = immediate return, zero L2 calls

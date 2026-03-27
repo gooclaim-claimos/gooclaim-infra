@@ -1,4 +1,5 @@
 ---
+rules-version: "1.0"
 description: Create a new Architecture Decision Record in docs/10-adr/. Usage: /new-adr <title> e.g. /new-adr use temporal for rw2
 ---
 

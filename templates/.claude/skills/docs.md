@@ -1,4 +1,5 @@
 ---
+rules-version: "1.0"
 description: Generate the complete documentation structure for this Gooclaim service. Scaffolds README, CHANGELOG, GLOSSARY, and docs/00 through docs/12. Never overwrites existing files.
 ---
 

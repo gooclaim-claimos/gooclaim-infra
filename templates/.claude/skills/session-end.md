@@ -1,4 +1,5 @@
 ---
+rules-version: "1.0"
 description: Complete the session log in CLAUDE_SESSION.md. Fills what was done, decisions made, files changed, and what's next. Usage: /session-end or /session-end Mayank
 ---
 

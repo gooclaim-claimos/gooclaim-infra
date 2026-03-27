@@ -1,3 +1,4 @@
+<!-- rules-version: 1.0 -->
 ## L7 — Observability Rules
 
 - Deploy L7 Day-1, never Day-2 — metrics must be live before first TPA onboards

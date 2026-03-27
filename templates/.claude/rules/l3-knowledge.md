@@ -1,3 +1,4 @@
+<!-- rules-version: 1.0 -->
 ## L3 — Knowledge Layer Rules
 
 - Content Safety Gate: 8-stage ingestion pipeline applied to every file; all stages self-hosted for IRDAI data residency

@@ -1,3 +1,4 @@
+<!-- rules-version: 1.0 -->
 ## L5 — Outbound Engine Rules
 
 - L5 executes what L1 decides — never decides itself; execution only with full audit trail

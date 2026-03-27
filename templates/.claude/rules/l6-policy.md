@@ -1,3 +1,4 @@
+<!-- rules-version: 1.0 -->
 ## L6 — Policy Gate Rules
 
 - L6 cannot be bypassed — it is the last line of defense before anything leaves the system

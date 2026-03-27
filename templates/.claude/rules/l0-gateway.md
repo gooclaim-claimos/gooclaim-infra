@@ -1,3 +1,4 @@
+<!-- rules-version: 1.0 -->
 ## L0 — Channel Gateway Rules
 
 - Zero business logic in L0 — normalize and secure only; never decide what to reply or what a message means
