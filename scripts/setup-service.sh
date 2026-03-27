@@ -44,7 +44,11 @@ mkdir -p "$DEST"/.github/PULL_REQUEST_TEMPLATE
 mkdir -p "$DEST"/.claude/rules
 mkdir -p "$DEST"/.claude/skills
 mkdir -p "$DEST"/.claude/hooks
-mkdir -p "$DEST"/src/"$SERVICE"
+mkdir -p "$DEST"/src/"$SERVICE"/routes
+mkdir -p "$DEST"/src/"$SERVICE"/services
+mkdir -p "$DEST"/src/"$SERVICE"/models
+mkdir -p "$DEST"/src/"$SERVICE"/connectors
+mkdir -p "$DEST"/migrations
 mkdir -p "$DEST"/tests/unit
 mkdir -p "$DEST"/tests/integration
 mkdir -p "$DEST"/badges
@@ -99,16 +103,42 @@ cp templates/Dockerfile     "$DEST"/Dockerfile
 
 # ─── Source skeleton ──────────────────────────────────────
 touch "$DEST"/src/"$SERVICE"/__init__.py
+touch "$DEST"/src/"$SERVICE"/routes/__init__.py
+touch "$DEST"/src/"$SERVICE"/services/__init__.py
+touch "$DEST"/src/"$SERVICE"/models/__init__.py
+touch "$DEST"/src/"$SERVICE"/connectors/__init__.py
+touch "$DEST"/migrations/.gitkeep
+
+cat > "$DEST"/src/"$SERVICE"/config.py <<EOF
+from pydantic_settings import BaseSettings
+
+
+class Settings(BaseSettings):
+    env: str = "dev"
+    log_level: str = "INFO"
+
+    database_url: str
+    redis_url: str = "redis://localhost:6379"
+
+    class Config:
+        env_file = ".env"
+        case_sensitive = False
+
+
+settings = Settings()
+EOF
 
 cat > "$DEST"/src/"$SERVICE"/main.py <<EOF
 from fastapi import FastAPI
 
-app = FastAPI(title="$SERVICE")
+from .config import settings
+
+app = FastAPI(title="$SERVICE", docs_url="/docs" if settings.env != "prod" else None)
 
 
 @app.get("/health")
 async def health() -> dict:
-    return {"status": "ok", "service": "$SERVICE"}
+    return {"status": "ok", "service": "$SERVICE", "env": settings.env}
 EOF
 
 # ─── Test skeleton ────────────────────────────────────────
@@ -124,6 +154,67 @@ EOF
 
 touch "$DEST"/tests/unit/.gitkeep
 touch "$DEST"/tests/integration/.gitkeep
+
+# ─── Docker local dev ─────────────────────────────────────
+cat > "$DEST"/docker-compose.yml <<EOF
+# Local development only — not for production
+version: "3.9"
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src   # hot reload in dev
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: gooclaim
+      POSTGRES_PASSWORD: localpass
+      POSTGRES_DB: gooclaim_dev
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "gooclaim"]
+      interval: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+EOF
+
+cat > "$DEST"/.dockerignore <<EOF
+.git
+.github
+.claude
+.tox
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+htmlcov
+coverage.xml
+badges
+.env
+.env.*
+tests
+docs
+*.md
+EOF
 
 # ─── README skeleton ──────────────────────────────────────
 cat > "$DEST"/README.md <<EOF
