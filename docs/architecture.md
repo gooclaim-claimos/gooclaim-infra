@@ -160,6 +160,33 @@ All contracts defined in: `gooclaim-shared/src/contracts/`
 
 ---
 
+## gooclaim-shared — What Lives Here
+
+**Rule:** Agar koi cheez 2+ services use karti hai → `gooclaim-shared`. 1 service use kare → us service ka repo.
+
+| Module | Path | Kya hai |
+|--------|------|---------|
+| Proto contracts | `proto/` | `InteractionEvent`, `OutboundIntent`, `AuditEvent` — `.proto` files |
+| Generated stubs | `generated/` | Auto-generated Python gRPC classes — never edit manually |
+| Python contracts | `contracts/` | Pydantic dataclasses matching proto contracts |
+| Enums | `enums/` | `Language` (HI/EN/HI_EN), `TemplateID` (TPL_*), `WorkflowID` (RW1/RW2/RW3), `OperationalMode` (OPERATIONAL/RESTRICTED/SUSPENDED), `ErrorCode` (6 codes) |
+| Tenant middleware | `middleware/tenant_context.py` | `TenantIsolationMiddleware` — request-level tenant scoping, same pattern across all services |
+| OpenTelemetry | `observability/tracer.py` | Shared tracer factory — one setup, all services import |
+| Structured logger | `logging/logger.py` | Logger with `trace_id` + `tenant_id` on every log line |
+| Alembic base | `db/base.py` | Shared `Base` model + migration config |
+| Graceful shutdown | `shutdown/graceful.py` | Shared shutdown utility — SIGTERM handler |
+| Base exceptions | `exceptions/base.py` | `GooclaimBaseError`, `TenantError` etc. |
+| PHI hasher | `phi/hasher.py` | `hash_phone(phone, tenant_salt)` — SHA-256 + tenant-scoped salt. One implementation, used by L0/L2/L5/L6 |
+| Base config | `config/base.py` | `GooclaimBaseSettings` (Pydantic) — `env`, `tenant_id`, `redis_url`, `database_url`, `otel_endpoint`. Each service extends this. |
+| Retry decorator | `retry/decorator.py` | `@retry(max_attempts=3, backoff="exponential", jitter=True)` — used by L1/L2/L5 |
+
+**What does NOT go in gooclaim-shared:**
+- `ICMSConnector`, `IHMSConnector`, `ICRMConnector` ABCs → `gooclaim-truth` (only L2 uses them)
+- Business logic of any layer → that layer's repo
+- Service-specific config → that service's `config.py`
+
+---
+
 ## Glossary — Dono Languages
 
 | Internal Term | GitHub / External Term | Meaning |
