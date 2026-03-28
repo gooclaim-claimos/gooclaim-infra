@@ -1,5 +1,5 @@
 ---
-description: Generate the complete Gooclaim standard documentation suite for the current service. Reads src/, git log, CLAUDE.md, and layer rules before writing. P0/P1 = fully generated, P2/P3 = skeleton with TODOs. Usage: /docs | /docs 00-overview | /docs all
+description: "Generate the complete Gooclaim standard documentation suite for the current service. Reads src/, git log, CLAUDE.md, and layer rules before writing. P0/P1 = fully generated, P2/P3 = skeleton with TODOs. Usage: /docs | /docs 00-overview | /docs all"
 ---
 
 # /docs — Generate Service Documentation
