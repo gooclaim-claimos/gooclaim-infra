@@ -172,6 +172,7 @@ for REPO in "${ALL_REPOS[@]}"; do
   if [ "$DRY_RUN" = false ]; then
     mkdir -p "$REPO_PATH/.claude/rules"
     mkdir -p "$REPO_PATH/.claude/skills"
+    mkdir -p "$REPO_PATH/.claude/commands"
     mkdir -p "$REPO_PATH/.claude/hooks"
   fi
 
@@ -184,12 +185,12 @@ for REPO in "${ALL_REPOS[@]}"; do
       "rules/$LAYER_RULE"
   fi
 
-  # Sync all 4 skills
+  # Sync all 4 commands (slash commands for Claude Code)
   for skill in docs.md new-adr.md session-end.md test.md; do
     sync_file \
-      "templates/.claude/skills/$skill" \
-      "$REPO_PATH/.claude/skills/$skill" \
-      "skills/$skill"
+      "templates/.claude/commands/$skill" \
+      "$REPO_PATH/.claude/commands/$skill" \
+      "commands/$skill"
   done
 
   # Sync hooks
