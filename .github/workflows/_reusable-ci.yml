@@ -124,6 +124,9 @@ jobs:
     name: Test + coverage (≥${{ inputs.coverage-threshold }}%)
     runs-on: ubuntu-latest
     needs: [typecheck, security]
+    permissions:
+      pull-requests: write
+      contents: read
 
     services:
       postgres:
