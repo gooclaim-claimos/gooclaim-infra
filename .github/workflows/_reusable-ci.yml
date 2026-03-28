@@ -31,6 +31,9 @@ on:
     secrets:
       GHCR_TOKEN:
         required: false
+      GH_PAT:
+        required: true
+        description: "PAT with read access to gooclaim-shared (private repo)"
 
 jobs:
 
@@ -49,6 +52,9 @@ jobs:
           python-version: ${{ inputs.python-version }}
           cache: pip
 
+      - name: Configure git for private repos
+        run: git config --global url."https://${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
+
       - run: pip install tox
       - run: tox -e lint
 
@@ -66,6 +72,9 @@ jobs:
         with:
           python-version: ${{ inputs.python-version }}
           cache: pip
+
+      - name: Configure git for private repos
+        run: git config --global url."https://${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
 
       - run: pip install tox
       - run: tox -e typecheck
@@ -86,6 +95,9 @@ jobs:
         with:
           python-version: ${{ inputs.python-version }}
           cache: pip
+
+      - name: Configure git for private repos
+        run: git config --global url."https://${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
 
       - run: pip install tox
       - run: tox -e security
@@ -141,6 +153,9 @@ jobs:
         with:
           python-version: ${{ inputs.python-version }}
           cache: pip
+
+      - name: Configure git for private repos
+        run: git config --global url."https://${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
 
       - run: pip install tox
 

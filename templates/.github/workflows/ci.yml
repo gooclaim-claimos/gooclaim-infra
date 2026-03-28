@@ -24,3 +24,4 @@ jobs:
       skip-docker: false
     secrets:
       GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_PAT: ${{ secrets.GH_PAT }}
