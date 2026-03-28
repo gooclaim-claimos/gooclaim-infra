@@ -112,8 +112,7 @@ jobs:
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ${{ github.event.pull_request.base.sha }}
-          head: ${{ github.event.pull_request.head.sha }}
+          extra_args: --only-verified
         continue-on-error: true
 
   # ─────────────────────────────────────────
