@@ -47,6 +47,7 @@ mkdir -p "$DEST"/.github/workflows
 mkdir -p "$DEST"/.github/PULL_REQUEST_TEMPLATE
 mkdir -p "$DEST"/.claude/rules
 mkdir -p "$DEST"/.claude/skills
+mkdir -p "$DEST"/.claude/commands
 mkdir -p "$DEST"/.claude/hooks
 mkdir -p "$DEST"/src/"$PACKAGE"/routes
 mkdir -p "$DEST"/src/"$PACKAGE"/services
@@ -101,6 +102,12 @@ cp templates/.claude/skills/docs.md         "$DEST"/.claude/skills/docs.md
 cp templates/.claude/skills/new-adr.md      "$DEST"/.claude/skills/new-adr.md
 cp templates/.claude/skills/session-end.md  "$DEST"/.claude/skills/session-end.md
 cp templates/.claude/skills/test.md         "$DEST"/.claude/skills/test.md
+
+# Commands — all 4 (Claude Code slash commands: /docs, /new-adr, /session-end, /test)
+cp templates/.claude/commands/docs.md         "$DEST"/.claude/commands/docs.md
+cp templates/.claude/commands/new-adr.md      "$DEST"/.claude/commands/new-adr.md
+cp templates/.claude/commands/session-end.md  "$DEST"/.claude/commands/session-end.md
+cp templates/.claude/commands/test.md         "$DEST"/.claude/commands/test.md
 
 # ─── Project files ────────────────────────────────────────
 cp templates/tox.ini        "$DEST"/tox.ini
