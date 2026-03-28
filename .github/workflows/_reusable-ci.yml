@@ -178,6 +178,19 @@ jobs:
           name: coverage-${{ inputs.service-name }}
           path: htmlcov/
 
+      - name: Generate and commit coverage badge
+        run: |
+          pip install "genbadge[coverage]"
+          mkdir -p badges
+          genbadge coverage -i coverage.xml -o badges/coverage.svg
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add badges/coverage.svg
+          git diff --cached --quiet || git commit -m "chore: update coverage badge [skip ci]"
+          git push origin HEAD
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   # ─────────────────────────────────────────
   # JOB 5 — DOCKER BUILD CHECK
   # Skippable via skip-docker input
