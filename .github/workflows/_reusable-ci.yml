@@ -198,5 +198,6 @@ jobs:
           context: .
           push: false
           tags: gooclaim-claimos/${{ inputs.service-name }}:pr-${{ github.sha }}
+          build-args: GH_PAT=${{ secrets.GH_PAT }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
