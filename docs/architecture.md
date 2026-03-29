@@ -194,17 +194,19 @@ All contracts defined in: `gooclaim-shared/src/contracts/`
 **Tool:** [Locust](https://locust.io/) — Python-based, fits our stack
 
 **Plan:**
-- `tests/load/` folder har service repo mein (L0, L1, L5)
-- Ya ek dedicated `gooclaim-load-tests` repo
+- Dedicated `gooclaim-load-tests` repo — sab layers ek jagah
 - `_reusable-load-test.yml` gooclaim-infra mein — jaise `_reusable-ci.yml`
 
-**What to test:**
-| Scenario | SLA target |
-|----------|-----------|
-| WhatsApp webhook burst (L0) | < 200ms P95 |
-| Full pipeline L0→L1→L2→L5 | < 3s |
-| Redis circuit breaker per-tenant | Failover < 100ms |
-| BullMQ under concurrent load | No queue backup |
+**Per-layer scenarios:**
+| Layer | What to test | SLA target |
+|-------|-------------|-----------|
+| L0 | WhatsApp webhook burst, rate limiter | < 200ms P95 |
+| L1 | Workflow decisions, LLM classifier latency | < 500ms P95 |
+| L2 | CMS connector, circuit breaker failover | Failover < 100ms |
+| L3 | KB/RAG query under concurrent load | < 1s P95 |
+| L5 | Outbound send throughput, Meta API rate limits | < 1s P95 |
+| L6 | Policy gate T1→T4 pipeline throughput | < 200ms P95 |
+| Full | L0→L1→L2→L5 end-to-end | < 3s |
 
 **Trigger:** Pre-production deploy se pehle — nprd pe baseline set karo
 
