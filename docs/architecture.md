@@ -187,6 +187,29 @@ All contracts defined in: `gooclaim-shared/src/contracts/`
 
 ---
 
+## Planned — Load Testing (Post L0+L1 integration)
+
+> **Not in Phase 1 pilot.** Add when L0 + L1 both deployed and connected.
+
+**Tool:** [Locust](https://locust.io/) — Python-based, fits our stack
+
+**Plan:**
+- `tests/load/` folder har service repo mein (L0, L1, L5)
+- Ya ek dedicated `gooclaim-load-tests` repo
+- `_reusable-load-test.yml` gooclaim-infra mein — jaise `_reusable-ci.yml`
+
+**What to test:**
+| Scenario | SLA target |
+|----------|-----------|
+| WhatsApp webhook burst (L0) | < 200ms P95 |
+| Full pipeline L0→L1→L2→L5 | < 3s |
+| Redis circuit breaker per-tenant | Failover < 100ms |
+| BullMQ under concurrent load | No queue backup |
+
+**Trigger:** Pre-production deploy se pehle — nprd pe baseline set karo
+
+---
+
 ## Glossary — Dono Languages
 
 | Internal Term | GitHub / External Term | Meaning |
