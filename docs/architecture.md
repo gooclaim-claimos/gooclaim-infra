@@ -114,7 +114,7 @@ gooclaim-shared  ← Types/utils imported by all layers
 
 | From | To | Method | Event/Contract |
 |------|----|--------|----------------|
-| L0 → L1 | gooclaim-gateway → gooclaim-engine | FastAPI HTTP | `InteractionEvent` |
+| L0 → L1 | gooclaim-gateway → gooclaim-engine | BullMQ Queue | `InteractionEvent` |
 | L1 → L2 | gooclaim-engine → gooclaim-truth | FastAPI HTTP | `ClaimRequest` |
 | L1 → L3 | gooclaim-engine → gooclaim-knowledge | FastAPI HTTP | `KBQuery` |
 | L1 → L5 | gooclaim-engine → gooclaim-outbound | BullMQ Queue | `OutboundIntent` |
