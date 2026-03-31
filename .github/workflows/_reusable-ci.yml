@@ -151,6 +151,7 @@ jobs:
       REDIS_URL: redis://localhost:6379
       ENV: test
       COVERAGE_THRESHOLD: ${{ inputs.coverage-threshold }}
+      GRPC_JWT_SECRET: test-jwt-secret-for-ci
 
     steps:
       - uses: actions/checkout@v4
