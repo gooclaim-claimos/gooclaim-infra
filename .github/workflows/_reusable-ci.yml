@@ -147,7 +147,7 @@ jobs:
           --health-interval 5s
 
     env:
-      DATABASE_URL: postgresql://gooclaim:testpass@localhost:5432/gooclaim_test
+      DATABASE_URL: postgresql+asyncpg://gooclaim:testpass@localhost:5432/gooclaim_test
       REDIS_URL: redis://localhost:6379
       ENV: test
       COVERAGE_THRESHOLD: ${{ inputs.coverage-threshold }}
