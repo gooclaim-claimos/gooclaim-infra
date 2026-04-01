@@ -22,6 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.set.outputs.environment }}
+      environment_upper: ${{ steps.set.outputs.environment_upper }}
     steps:
       - id: set
         run: |
