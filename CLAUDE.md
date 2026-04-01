@@ -30,7 +30,8 @@ L7  — Observability       (apps/l7-observability)
 
 ## Phase 1 Scope (Pilot)
 
-- Channels: WhatsApp WABA only (no voice, no SMS)
+- Channels: WhatsApp WABA only (no voice, no SMS) — P1 only
+- Voice = separate service (`gooclaim-voice`) — P2; has its own ASR/TTS/telephony stack; never embed voice logic in gooclaim-gateway
 - Workflows: RW1 (claim status) + RW2 (pending docs) + RW3 (query reason)
 - Languages: HI, EN, HI_EN — config/languages.yml is source of truth
 - Output: Templates only — never free-text LLM generation to users; templates must be channel-aware (WhatsApp HSM / Voice TTS / SMS / Web JSON)
