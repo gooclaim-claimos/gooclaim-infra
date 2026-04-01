@@ -44,5 +44,5 @@ jobs:
       sha: ${{ github.sha }}
     secrets:
       KUBE_CONFIG: ${{ secrets[format('{0}_KUBE_CONFIG', needs.resolve-env.outputs.environment_upper)] }}
-      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GHCR_TOKEN: ${{ secrets.GH_PAT }}
       GH_PAT: ${{ secrets.GH_PAT }}
