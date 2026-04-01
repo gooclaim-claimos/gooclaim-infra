@@ -33,7 +33,7 @@ L7  — Observability       (apps/l7-observability)
 - Channels: WhatsApp WABA only (no voice, no SMS)
 - Workflows: RW1 (claim status) + RW2 (pending docs) + RW3 (query reason)
 - Languages: HI, EN, HI_EN — config/languages.yml is source of truth
-- Output: Templates only — never free-text LLM generation to users
+- Output: Templates only — never free-text LLM generation to users; templates must be channel-aware (WhatsApp HSM / Voice TTS / SMS / Web JSON)
 - L2 mode: Read-only — no write-back to CMS
 - L4 mode: Passive signal capture — no active learning yet
 
@@ -104,6 +104,7 @@ pnpm db:migrate:rollback
 - Consent gate (DPDP) is Step 0 — no workflow runs without CONSENT_GIVEN
 - L6 Policy Gate runs on every LLM output — never bypass
 - Templates only in Phase 1 — if you are generating free text for end users, stop
+- Templates are channel-aware — same template ID, different format per channel (WhatsApp HSM / Voice TTS script / SMS short / Web JSON); never hardcode WhatsApp-only format
 - circuit_breaker state (CLOSED/OPEN/HALF_OPEN) must be Redis-backed per tenant
 - fraud_suspect flag at 5+ NOT_FOUND events — do not remove this logic
 

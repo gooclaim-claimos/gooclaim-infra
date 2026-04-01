@@ -7,7 +7,8 @@
 - OCR chunks with confidence < 0.6 are rejected by Confidence Filter; never stored
 - LoaderRegistry is YAML-driven — mime_type → ILoader class mapping via `config/ingestion/loader_registry.yml`; add new file types here
 - No free-text generation to users ever; templates only in Phase 1
-- Template Registry: 11 pre-approved WhatsApp templates, version controlled, 3 language variants (HI/EN/HI_EN) each
+- Template Registry: pre-approved templates, version controlled, **channel-aware** — each template has variants per channel (WhatsApp HSM / Voice TTS / SMS / Web JSON) × language (HI/EN/HI_EN)
+- Never design templates as WhatsApp-only — template structure must support all current and future channels from day 1
 - KB chunks stored with versions; status transitions: STAGING → LIVE → DEPRECATED only on next version promotion
 - Chunk deduplication scoped per tenant; cross-tenant hash matches are ignored
 - SME Approval: clean chunks auto-approved; flagged chunks require human approval before going LIVE
