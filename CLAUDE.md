@@ -17,15 +17,22 @@
 
 ## Layer Map
 
+L0–L7 are architecture shorthand (docs + diagrams only).
+Wire format (BullMQ, audit DB, logs) uses descriptive slugs — see `ServiceLayer` enum in gooclaim-shared.
+
 ```
-L0  — Channel Gateway     (apps/l0-channel-gateway)
-L1  — Workflow Engine     (apps/l1-workflow-engine)
-L2  — Truth Layer         (apps/l2-truth-layer)
-L3  — Knowledge Layer     (apps/l3-knowledge-layer)
-L4  — Learning Loop       (apps/l4-learning-loop)
-L5  — Outbound Engine     (apps/l5-outbound-engine)
-L6  — Policy Gate         (apps/l6-policy-gate)
-L7  — Observability       (apps/l7-observability)
+Shorthand   Wire format (ServiceLayer value)   Folder
+─────────── ──────────────────────────────── ──────────────────────────
+L0          channel-gateway                  apps/l0-channel-gateway
+L1          workflow-engine                  apps/l1-workflow-engine
+L2          truth-layer                      apps/l2-truth-layer
+L3          knowledge-layer                  apps/l3-knowledge-layer
+L4          learning-loop                    apps/l4-learning-loop
+L5          outbound-engine                  apps/l5-outbound-engine
+L6          policy-gate                      apps/l6-policy-gate
+L7          observability                    apps/l7-observability
+—           hub                              (connector hub, inside L2)
+—           model-gateway                    (Azure OAI proxy)
 ```
 
 ## Phase 1 Scope (Pilot)
@@ -91,6 +98,31 @@ pnpm db:migrate:rollback
 - Never mock the ModelGateway in integration tests — use test doubles
 - Test file: `*.test.ts` or `test_*.py` co-located with source
 - Coverage minimum: 80% lines
+
+## gooclaim-shared — Register First Rule
+
+**Before building any new service, channel, or workflow — register it in `gooclaim-shared` first.**
+
+`gooclaim-shared` is the single source of truth for all platform identifiers.
+If it is not registered here, it does not officially exist in the platform.
+
+| Adding a new... | Register in gooclaim-shared first | Then build |
+|-----------------|-----------------------------------|------------|
+| Service (layer) | `ServiceLayer` enum — new value   | Service repo |
+| Channel         | `ChannelType` enum — new value    | L0 adapter + L5 adapter |
+| Workflow        | `WorkflowID` enum — new value     | L1 workflow + registry.yml |
+| Audit event type| `AuditEventType` enum — new value | Service that emits it |
+| Language        | `Language` enum — new value       | config/languages.yml |
+
+**Why:** Every service imports `gooclaim-shared`. If each service defines its own strings,
+audit DB ends up with `"outbound-engine"`, `"outbound"`, `"L5"` for the same layer —
+IRDAI audit trail breaks, Grafana dashboards break, on-call queries return wrong data.
+
+**Process:**
+1. Open PR in `gooclaim-shared` — add enum value + bump version
+2. Get review + merge
+3. All consuming services update their `gooclaim-shared` dependency
+4. Then build the new service/feature
 
 ## Do Not Touch
 
