@@ -16,6 +16,8 @@ concurrency:
 
 jobs:
   ci:
+    permissions:
+      contents: write
     uses: gooclaim-claimos/gooclaim-infra/.github/workflows/_reusable-ci.yml@main
     with:
       service-name: gooclaim-service      # ← SIRF YEH CHANGE KARO har repo mein
