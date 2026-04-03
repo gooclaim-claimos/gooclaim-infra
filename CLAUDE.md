@@ -33,6 +33,7 @@ L6          policy-gate                      apps/l6-policy-gate
 L7          observability                    apps/l7-observability
 —           hub                              (connector hub, inside L2)
 —           model-gateway                    (Azure OAI proxy)
+—           audit                            (gooclaim-audit — immutable event ledger)
 ```
 
 ## Phase 1 Scope (Pilot)
