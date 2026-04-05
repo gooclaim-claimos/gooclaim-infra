@@ -198,14 +198,13 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # Auto-create badges branch if it doesn't exist
           if ! git ls-remote --exit-code origin badges > /dev/null 2>&1; then
-            PREV_BRANCH=$(git rev-parse --abbrev-ref HEAD)
             git checkout --orphan badges
             git rm -rf . --quiet
             echo "# Coverage badges" > README.md
             git add README.md
             git commit -m "chore: init badges branch [skip ci]"
             git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:badges
-            git checkout "$PREV_BRANCH"
+            git checkout -
           fi
           git fetch origin badges
           git worktree add /tmp/badges-worktree origin/badges
