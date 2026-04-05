@@ -53,8 +53,11 @@ jobs:
           cache: pip
 
       - name: Configure git for private repos
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
+          echo "machine github.com login x-access-token password $GH_PAT" >> ~/.netrc
+          chmod 600 ~/.netrc
 
       - run: pip install tox
       - run: tox -e lint
@@ -75,8 +78,11 @@ jobs:
           cache: pip
 
       - name: Configure git for private repos
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
+          echo "machine github.com login x-access-token password $GH_PAT" >> ~/.netrc
+          chmod 600 ~/.netrc
 
       - run: pip install tox
       - run: tox -e typecheck
@@ -99,8 +105,11 @@ jobs:
           cache: pip
 
       - name: Configure git for private repos
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
+          echo "machine github.com login x-access-token password $GH_PAT" >> ~/.netrc
+          chmod 600 ~/.netrc
 
       - run: pip install tox
       - run: tox -e security
@@ -161,8 +170,11 @@ jobs:
           cache: pip
 
       - name: Configure git for private repos
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
+          echo "machine github.com login x-access-token password $GH_PAT" >> ~/.netrc
+          chmod 600 ~/.netrc
 
       - run: pip install tox
 
