@@ -256,7 +256,10 @@ See [docs/00-overview.md](docs/00-overview.md) — run \`/docs\` in Claude Code 
 
 ## CI status
 
-![Coverage](badges/coverage.svg)
+[![CI](https://github.com/gooclaim-claimos/$SERVICE/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gooclaim-claimos/$SERVICE/actions/workflows/ci.yml)
+![Coverage](https://raw.githubusercontent.com/gooclaim-claimos/$SERVICE/badges/coverage.svg)
+[![Python](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org/)
+[![Version](https://img.shields.io/badge/version-0.1.0-green)](pyproject.toml)
 EOF
 
 # ─── .env.example ─────────────────────────────────────────
