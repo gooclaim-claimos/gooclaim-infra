@@ -236,30 +236,152 @@ EOF
 cat > "$DEST"/README.md <<EOF
 # $SERVICE
 
-> Part of [Gooclaim](https://github.com/gooclaim-claimos) — India's Claims OS
-
-## What this service does
-
-TODO: Add one-line description.
-
-## Quick start
-
-\`\`\`bash
-pip install tox
-tox -e test          # run tests
-tox                  # lint + typecheck + security + test
-\`\`\`
-
-## Docs
-
-See [docs/00-overview.md](docs/00-overview.md) — run \`/docs\` in Claude Code to generate full docs.
-
-## CI status
+> Part of [Gooclaim](https://github.com/gooclaim-claimos) — India's Agentic Claims OS
 
 [![CI](https://github.com/gooclaim-claimos/$SERVICE/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gooclaim-claimos/$SERVICE/actions/workflows/ci.yml)
 ![Coverage](badges/coverage.svg)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org/)
 [![Version](https://img.shields.io/badge/version-0.1.0-green)](pyproject.toml)
+
+---
+
+## Table of Contents
+
+1. [What This Service Does](#what-this-service-does)
+2. [Architecture & Layer](#architecture--layer)
+3. [Quick Start](#quick-start)
+4. [API Reference](#api-reference)
+5. [Configuration](#configuration)
+6. [Database / Models](#database--models)
+7. [Testing](#testing)
+8. [CI/CD Pipeline](#cicd-pipeline)
+9. [Deployment](#deployment)
+10. [Runbooks](#runbooks)
+11. [Docs](#docs)
+12. [Contributing](#contributing)
+
+---
+
+## What This Service Does
+
+TODO: Add description — what it does, who calls it, what it does NOT do.
+
+---
+
+## Architecture & Layer
+
+TODO: ASCII diagram showing upstream → this service → downstream.
+
+**Upstream:** TODO
+**Downstream:** TODO
+
+---
+
+## Quick Start
+
+\`\`\`bash
+pip install -e ".[dev]"
+cp .env.example .env
+docker compose up
+tox -e test
+tox
+\`\`\`
+
+---
+
+## API Reference
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| \`GET\` | \`/health\` | None | Health check |
+| \`GET\` | \`/metrics\` | None | Prometheus metrics |
+
+TODO: Add service endpoints.
+
+---
+
+## Configuration
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| \`DATABASE_URL\` | Yes | — | PostgreSQL connection string |
+| \`REDIS_URL\` | No | \`redis://localhost:6379\` | Redis URL |
+| \`ENV\` | No | \`dev\` | Environment (dev/sdx/nprd/prod) |
+| \`LOG_LEVEL\` | No | \`INFO\` | Log level |
+
+---
+
+## Database / Models
+
+TODO: List tables and their purpose.
+
+\`\`\`bash
+alembic upgrade head
+alembic downgrade -1
+\`\`\`
+
+---
+
+## Testing
+
+\`\`\`bash
+tox -e lint       # ruff
+tox -e typecheck  # pyright strict
+tox -e test       # pytest + coverage (min 80%)
+tox               # all checks
+\`\`\`
+
+Coverage gate: **80%**
+
+---
+
+## CI/CD Pipeline
+
+| Branch | Auto Deploy |
+|--------|-------------|
+| \`develop\` | \`dev\` environment |
+| \`main\` | \`nprd\` environment |
+| \`main\` + manual approval | \`prod\` environment |
+
+---
+
+## Deployment
+
+\`\`\`bash
+# Rollback
+kubectl set image deployment/$SERVICE \\
+  $SERVICE=ghcr.io/gooclaim-claimos/$SERVICE:<previous-sha> \\
+  -n gooclaim-prod
+\`\`\`
+
+See [\`docs/06-deployment.md\`](docs/06-deployment.md).
+
+---
+
+## Runbooks
+
+| Runbook | When to use |
+|---------|-------------|
+| TODO | TODO |
+
+---
+
+## Docs
+
+| Doc | Description |
+|-----|-------------|
+| [\`docs/00-overview.md\`](docs/00-overview.md) | Purpose, scope |
+| [\`docs/01-architecture.md\`](docs/01-architecture.md) | Flow, design |
+| [\`docs/03-apis.md\`](docs/03-apis.md) | API reference |
+| [\`docs/05-configuration.md\`](docs/05-configuration.md) | All env vars |
+| [\`docs/06-deployment.md\`](docs/06-deployment.md) | Deploy, rollback |
+| [\`docs/10-adr/\`](docs/10-adr/) | Architecture decisions |
+
+---
+
+## Contributing
+
+See [\`CONTRIBUTING.md\`](CONTRIBUTING.md) for branch strategy, commit format, and PR process.
 EOF
 
 # ─── .env.example ─────────────────────────────────────────
