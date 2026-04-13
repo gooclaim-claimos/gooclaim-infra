@@ -10,7 +10,7 @@
 | Repo | Purpose | Status | Sprint |
 |------|---------|--------|--------|
 | `gooclaim-infra` | CI/CD master, K8s, reusable workflows | ✅ Done | — |
-| `gooclaim-shared` | Enums, contracts, ABCs — 93% coverage | ✅ Done | — |
+| `gooclaim-shared` | Enums, contracts, ABCs — 93% coverage. Auth AuditEventTypes added (31 events) | ✅ Done | — |
 | `gooclaim-docs` | Architecture source of truth | ✅ Done | — |
 | `gooclaim-load-tests` | k6 load test scenarios | ✅ Done | — |
 
@@ -19,8 +19,8 @@
 | Repo | service-name in ci.yml | Purpose | Status | Sprint |
 |------|----------------------|---------|--------|--------|
 | `gooclaim-audit` | gooclaim-audit | Immutable ledger, SHA-256 chain, 82% coverage | ✅ Done | Sprint 1 |
-| `gooclaim-auth` | gooclaim-auth | JWT + RBAC + tenant scoping — **MOST URGENT** | ❌ Not started | Sprint 2 |
-| `gooclaim-config` | gooclaim-config | Template Registry (channel × language matrix) | ❌ Not started | Sprint 2 |
+| `gooclaim-auth` | gooclaim-auth | JWT + RBAC + MFA + DPDP consent + break-glass + integrations — 222 tests, 5/5 CI green | ✅ Done | Sprint 2 |
+| `gooclaim-template-registry` | gooclaim-template-registry | Template Registry (channel × language matrix) — 98 tests, 97% coverage | ✅ Done | Sprint 2 |
 | `gooclaim-model-gateway` | gooclaim-model-gateway | Azure OAI proxy — architecture designed | ⚙️ Designed | Sprint 3 |
 | `gooclaim-connector-hub` | gooclaim-connector-hub | External connectors (CMS + channel) — architecture designed | ⚙️ Designed | Sprint 3 |
 | `gooclaim-policy` | gooclaim-policy | L6 Policy Gate — T1+T2+T3+T4, Guardrails AI, PHI | ❌ Not started | Sprint 4 |
@@ -56,7 +56,7 @@
 
 ```
 Sprint 1 (Done):  gooclaim-shared → gooclaim-infra → gooclaim-gateway → gooclaim-audit
-Sprint 2:         gooclaim-auth → gooclaim-config
+Sprint 2 (Done):  gooclaim-auth ✅ | gooclaim-template-registry ✅
 Sprint 3:         gooclaim-model-gateway → gooclaim-connector-hub
 Sprint 4:         gooclaim-policy (L6)
 Sprint 5:         gooclaim-engine (L1) → gooclaim-truth (L2) → gooclaim-knowledge (L3)
