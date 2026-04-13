@@ -214,6 +214,21 @@ jobs:
           git add coverage.svg
           git diff --cached --quiet || git commit -m "chore: update coverage badge [skip ci]"
           git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:badges
+          # ── Auto-fix README badge URL ─────────────────────────────────────────
+          # Relative path "badges/coverage.svg" breaks with an orphan badges branch —
+          # it looks for the file in main/develop, not the badges branch.
+          # Correct format: https://raw.githubusercontent.com/{repo}/badges/coverage.svg
+          # This block self-heals any repo that still has the wrong relative path.
+          cd $GITHUB_WORKSPACE
+          CORRECT_URL="https://raw.githubusercontent.com/${{ github.repository }}/badges/coverage.svg"
+          if grep -qF '![Coverage](badges/coverage.svg)' README.md 2>/dev/null; then
+            sed -i "s|!\[Coverage\](badges/coverage\.svg)|![Coverage](${CORRECT_URL})|g" README.md
+            git add README.md
+            if ! git diff --cached --quiet; then
+              git commit -m "fix(badge): use absolute raw URL for coverage badge [skip ci]"
+              git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:${{ github.ref_name }}
+            fi
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
