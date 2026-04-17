@@ -10,7 +10,7 @@
 - Runtime: Python 3.12 (FastAPI) + Node 20 (where needed)
 - Queue: BullMQ (Redis-backed) — 8 queues, security = highest priority
 - DB: PostgreSQL 16 (primary) + Redis 7 (cache/queue)
-- Orchestration: Temporal (RW2 stateful workflows only)
+- Orchestration: Temporal (stateful workflows only — `pending-docs` is the only Temporal workflow in Phase 1)
 - AI: Azure OpenAI via Model Gateway only — never call Azure OAI directly
 - Container: Docker + Kubernetes (GKE)
 - Secrets: AWS Secrets Manager via ESO wrapper — never hardcode secrets
@@ -40,7 +40,7 @@ L7          observability                    apps/l7-observability
 
 - Channels: WhatsApp WABA only (no voice, no SMS) — P1 only
 - Voice = separate service (`gooclaim-voice`) — P2; has its own ASR/TTS/telephony stack; never embed voice logic in gooclaim-gateway
-- Workflows: RW1 (claim status) + RW2 (pending docs) + RW3 (query reason)
+- Workflows: `claim-status` + `pending-docs` + `query-reason` (WorkflowID wire values)
 - Languages: HI, EN, HI_EN — config/languages.yml is source of truth
 - Output: Templates only — never free-text LLM generation to users; templates must be channel-aware (WhatsApp HSM / Voice TTS / SMS / Web JSON)
 - L2 mode: Read-only — no write-back to CMS
@@ -141,6 +141,18 @@ IRDAI audit trail breaks, Grafana dashboards break, on-call queries return wrong
 - Templates are channel-aware — same template ID, different format per channel (WhatsApp HSM / Voice TTS script / SMS short / Web JSON); never hardcode WhatsApp-only format
 - circuit_breaker state (CLOSED/OPEN/HALF_OPEN) must be Redis-backed per tenant
 - fraud_suspect flag at 5+ NOT_FOUND events — do not remove this logic
+
+## gooclaim-template-registry — Cache Rules (Hard Rules)
+
+- Approval state machine: `DRAFT → PENDING → APPROVED` — `rollback()` goes `APPROVED → DRAFT` (not PENDING — rollback = back to editing state)
+- `SV3.get()` ALWAYS runs before `SV1.lookup()` — cache check is mandatory first step
+- `SV1.lookup()` is called ONLY on cache MISS — never call DB on cache HIT
+- Never cache NOT_FOUND responses — negative caching forbidden in P1
+- Cache key pattern: `template:{tenant_id}:{template_id}:{channel}:{language}`
+  - Example: `template:mediassist_001:RW1_STATUS_UPDATE:whatsapp:hi_en`
+  - Global templates: `tenant_id = "global"`
+- TTL: 300s — invalidate on `SV2.approve()`, `SV2.reject()`, `RT8` manual flush
+- Cache invalidation must emit `TEMPLATE_CACHE_INVALIDATED` audit event
 
 ## PR Checklist
 

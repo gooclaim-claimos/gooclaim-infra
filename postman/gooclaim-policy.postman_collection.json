@@ -1,0 +1,138 @@
+{
+  "info": {
+    "name": "gooclaim-policy",
+    "description": "gooclaim-policy — L6 Policy Gate (T1→T4), DPDP Consent, Identity Verification\n\nPort: 8007\n\nPolicy check actions:\n  ALLOW            → all tiers passed, use rendered_text as-is\n  REDACT_AND_ALLOW → T3 found PHI, use redacted_text\n  BLOCK            → any tier blocked, send TPL_FALLBACK\n\nT4 source_ref prefix routing:\n  cms:* / sftp:* → L2 Truth Layer\n  kb:*  / doc:*  → L3 Knowledge Layer\n  unknown prefix → BLOCK (hallucination risk)\n\nCalled by:\n  L5 → POST /v1/policy/check\n  L0 → POST /v1/consent/check\n  L0 → POST /v1/identity/verify",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",        "value": "http://localhost:8007" },
+    { "key": "tenant_id",       "value": "gooclaim-dev" },
+    { "key": "interaction_id",  "value": "test-interaction-001" },
+    { "key": "phone_hash",      "value": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Policy Gate (T1→T4)",
+      "item": [
+        {
+          "name": "POST /v1/policy/check — ALLOW (clean text)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/v1/policy/check",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interaction_id\": \"{{interaction_id}}\",\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"rendered_text\": \"Aapka claim CLM-001 ka status APPROVED hai. Koi sawaal? Reply karein.\",\n  \"source_refs\": [\"cms:claim-CLM-001\"],\n  \"template_variables\": {\n    \"claim_id\": \"CLM-001\",\n    \"status\": \"APPROVED\"\n  },\n  \"language\": \"HI_EN\",\n  \"workflow_id\": \"claim-status\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /v1/policy/check — T3 PHI test (should REDACT)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/v1/policy/check",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interaction_id\": \"{{interaction_id}}\",\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"rendered_text\": \"Ramesh Kumar ka claim approved hai. Phone: 9876543210\",\n  \"source_refs\": [\"cms:claim-CLM-001\"],\n  \"template_variables\": {\n    \"claim_id\": \"CLM-001\"\n  },\n  \"language\": \"HI_EN\",\n  \"workflow_id\": \"claim-status\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /v1/policy/check — T4 unknown source (should BLOCK)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/v1/policy/check",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interaction_id\": \"{{interaction_id}}\",\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"rendered_text\": \"Aapka claim approved hai.\",\n  \"source_refs\": [\"unknown:some-ref\"],\n  \"template_variables\": {},\n  \"language\": \"HI_EN\",\n  \"workflow_id\": \"claim-status\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /v1/policy/check — KB source (L3)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/v1/policy/check",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interaction_id\": \"{{interaction_id}}\",\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"rendered_text\": \"Health claim ke liye discharge summary submit karein.\",\n  \"source_refs\": [\"kb:doc-health-claim-faq\"],\n  \"template_variables\": {},\n  \"language\": \"HI_EN\",\n  \"workflow_id\": \"query-reason\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Consent (DPDP)",
+      "item": [
+        {
+          "name": "POST /v1/consent/check — check consent status",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/v1/consent/check",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interaction_id\": \"{{interaction_id}}\",\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"phone_hash\": \"{{phone_hash}}\",\n  \"channel\": \"whatsapp\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Identity Verification",
+      "item": [
+        {
+          "name": "POST /v1/identity/verify — TIER_1 (no OTP needed)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/v1/identity/verify",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interaction_id\": \"{{interaction_id}}\",\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"phone_hash\": \"{{phone_hash}}\",\n  \"tier_required\": \"TIER_1\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /v1/identity/verify — TIER_2 initiate (send OTP)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/v1/identity/verify",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interaction_id\": \"{{interaction_id}}\",\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"phone_hash\": \"{{phone_hash}}\",\n  \"tier_required\": \"TIER_2\",\n  \"otp_code\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /v1/identity/verify — TIER_2 complete (verify OTP)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/v1/identity/verify",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interaction_id\": \"{{interaction_id}}\",\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"phone_hash\": \"{{phone_hash}}\",\n  \"tier_required\": \"TIER_2\",\n  \"otp_code\": \"123456\"\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

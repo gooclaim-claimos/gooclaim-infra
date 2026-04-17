@@ -22,6 +22,60 @@ Blocking:      None — infra layer complete, service repos not yet created
 
 <!-- Most recent session on top -->
 
+### 2026-04-17 — Team — Session 5
+
+**Started:** IST
+**Ended:** IST
+**Layer / Service:** gooclaim-console + gooclaim-copilot + gooclaim-shared (WorkflowID migration)
+**Branch:** main / develop
+
+**Goal for this session:**
+Review and push gooclaim-console and gooclaim-copilot UI repos to GitHub with CI green. Migrate WorkflowID wire values from opaque codes (RW1/RW2/RW3) to industry-standard descriptive slugs (claim-status/pending-docs/query-reason) across the entire platform.
+
+**What was done:**
+- Fixed all TypeScript CI errors in gooclaim-console (missing assets, LucideIcon type, unused locals)
+- Fixed all TypeScript CI errors in gooclaim-copilot (unused local const, type errors)
+- Removed `cache: "npm"` from `actions/setup-node@v4` in both repos (no package-lock.json in Vite projects)
+- Pushed gooclaim-console to GitHub (main + develop branches)
+- Pushed gooclaim-copilot to GitHub (main + develop branches)
+- CI green on both repos after fixes
+- Updated `gooclaim-shared` WorkflowID enum: wire values changed from "RW1"/"RW2"/"RW3" → "claim-status"/"pending-docs"/"query-reason"
+- Updated `displayNames.ts` in both console and copilot to mirror new wire values
+- Bulk-replaced RW1/RW2/RW3 wire value references across 122+ markdown files, Postman collections, WhatsApp template files
+- Fixed awkward compound patterns from bulk replace (e.g. "claim-status (claim status)" → "claim-status")
+- Updated CLAUDE.md workflow references
+- Created prod-level README files for gooclaim-console and gooclaim-copilot
+
+**Decisions made:**
+- WorkflowID keys (RW1/RW2/RW3) kept in code for readability — wire format (DB, logs, queues, audit) uses descriptive slugs: `claim-status`, `pending-docs`, `query-reason`
+- Same pattern as `ServiceLayer` enum in gooclaim-shared — code uses enum key, wire uses descriptive slug
+- `LucideIcon` (from lucide-react) is the correct TypeScript type for Lucide icon props — `ComponentType<{size?: number}>` is wrong (Lucide's size accepts `string | number`)
+- TypeScript `noUnusedLocals: true` does NOT respect `_` prefix for local `const` declarations — only for function parameters. Unused local consts must be deleted
+
+**Files changed:**
+- `gooclaim-shared/src/gooclaim_shared/enums/workflow.py` — wire values updated
+- `gooclaim-console/src/config/displayNames.ts` + `gooclaim-copilot/src/config/displayNames.ts` — WorkflowID + WORKFLOW_NAMES updated
+- `gooclaim-console/src/app/screens/ChannelGateway.tsx` — missing asset imports replaced with LetterIcon
+- `gooclaim-console/src/app/screens/AccessControl.tsx` + `PolicyGate.tsx` — LucideIcon type fix
+- `gooclaim-copilot/src/app/components/TicketList.tsx` — unused local const deleted
+- `postman/gooclaim-policy.postman_collection.json` + `gooclaim-template-registry.postman_collection.json` — wire values updated
+- 122+ markdown files across all repos — RW1/RW2/RW3 → claim-status/pending-docs/query-reason
+- `CLAUDE.md` — workflow references updated
+
+**Known issues:**
+- gooclaim-shared WorkflowID change is on feature branch `GCOS-18-Updating-the-gooclaim-shared-for-gooclaim-policy-repo` — needs PR → develop → main
+
+**What's next (for next session or next engineer):**
+- [ ] Merge gooclaim-shared WorkflowID branch → develop → main
+- [ ] Start gooclaim-engine (L1): intent classifier + RW1/RW2/RW3 workflow stubs + Temporal worker for RW2
+- [ ] Enable branch protection on main + develop for gooclaim-console and gooclaim-copilot
+- [ ] GKE cluster setup for dev environment
+
+**Open questions / blockers:**
+- None
+
+---
+
 ### 2026-04-01 — Team — Session 4
 
 **Started:** IST
@@ -93,7 +147,7 @@ Document load testing strategy and fix architecture doc errors found during revi
 
 **What's next (for next session or next engineer):**
 - [ ] Create `gooclaim-engine` repo (L1 Workflow Engine) using `setup-service.sh`
-- [ ] Start L1: intent classifier, RW1/RW2/RW3 workflow stubs
+- [ ] Start L1: intent classifier, claim-status/pending-docs/query-reason workflow stubs
 - [ ] Add `_reusable-load-test.yml` to `.github/workflows/` when first scenario activates
 - [ ] Create remaining service repos: gooclaim-truth, gooclaim-knowledge, gooclaim-policy, gooclaim-outbound, gooclaim-audit, gooclaim-observe, gooclaim-learning
 
@@ -177,7 +231,7 @@ Build the gooclaim-infra repo from scratch: CI/CD reusable workflows, service sc
 - Fixed Python package naming: underscore convention (`gooclaim_gateway`, not `gooclaim-gateway`)
 - Added `sync-rules.sh` — syncs `.claude/rules/` across all repos from gooclaim-infra master copy
 - Added rules-version headers for tracking which version of rules each repo has
-- Added `docs/decisions/` ADRs: ADR-001 (Temporal/RW2), ADR-002 (Guardrails AI), ADR-003 (Haystack), ADR-004 (templates only), ADR-005 (L2 read-only)
+- Added `docs/decisions/` ADRs: ADR-001 (Temporal/pending-docs), ADR-002 (Guardrails AI), ADR-003 (Haystack), ADR-004 (templates only), ADR-005 (L2 read-only)
 - Added `docs/runbooks/`: deploy.md, rollback.md, incident-response.md
 - Updated all layer rules (`.claude/rules/`) with missing critical details from internal docs
 - Fixed Claude Code settings issues (`.claude/settings.local.json`)
@@ -229,6 +283,7 @@ Build the gooclaim-infra repo from scratch: CI/CD reusable workflows, service sc
 
 | Date | Decision | Reason | Who |
 |------|----------|--------|-----|
+| 2026-04-17 | WorkflowID wire values: claim-status / pending-docs / query-reason | Opaque codes (RW1/RW2/RW3) in DB/logs/audit were unreadable to operators and IRDAI auditors; descriptive slugs match industry standard | Team |
 | 2026-03-29 | L0→L1 via BullMQ (not FastAPI HTTP) | InteractionEvent queued — decouples ingest from processing, handles bursts | Team |
 | 2026-03-28 | TruffleHog: full repo scan (not diff-only) | Shallow clones cause false negatives with diff scan | Team |
 | 2026-03-28 | Coverage PR comment dropped | GitHub Actions caller permission model too complex; badge on README sufficient | Team |
@@ -237,7 +292,7 @@ Build the gooclaim-infra repo from scratch: CI/CD reusable workflows, service sc
 | 2026-03-27 | Python src layout (`src/gooclaim_X/`) | Standard packaging, avoids import collisions, consistent with gooclaim-shared | Team |
 | 2026-03 | L6 T2: Guardrails AI (not NeMo) | Hinglish non-deterministic, not IRDAI auditable in Phase 1 | Team |
 | 2026-03 | L2: Read-only Phase 1 | De-risk pilot — no write-back until connectors proven | Team |
-| 2026-03 | L1 RW2: Temporal (not FastAPI) | 24h wait cycle — FastAPI stateless can't handle | Team |
+| 2026-03 | L1 pending-docs: Temporal (not FastAPI) | 24h wait cycle — FastAPI stateless can't handle | Team |
 | 2026-03 | Templates only Phase 1 | Zero hallucination requirement, IRDAI compliance | Team |
 | 2026-03 | Language: HI_EN default | Professional operators — Hinglish most common | Team |
 
@@ -276,6 +331,8 @@ Build the gooclaim-infra repo from scratch: CI/CD reusable workflows, service sc
 | gooclaim-docs (documentation) | ✅ Done (sdx) | Team | All L0–L7 + infra + security docs |
 | L0 Channel Gateway | ✅ Done (sdx) | Team | gooclaim-gateway — 32 files, full tests |
 | Load Tests | ✅ Done (sdx) | Team | gooclaim-load-tests — all scenarios written, awaiting nprd |
+| gooclaim-console (ops UI) | ✅ Done (sdx) | Team | All screens built, CI green, pushed to GitHub |
+| gooclaim-copilot (agent UI) | ✅ Done (sdx) | Team | All components built, CI green, pushed to GitHub |
 | Secrets Vault | ⬜ Not started | — | Phase 2 — gooclaim-vault |
 | Platform Infra | ⬜ Not started | — | K8s + Redis + PG + BullMQ |
 | Access Control | ⬜ Not started | — | Phase 2 — gooclaim-access |
@@ -284,9 +341,9 @@ Build the gooclaim-infra repo from scratch: CI/CD reusable workflows, service sc
 | L6 Policy Gate | ⬜ Not started | — | gooclaim-policy — T1 + Guardrails AI + PHI |
 | L2 Truth Layer | ⬜ Not started | — | gooclaim-truth — ICMSConnector + CB |
 | Connector Hub | ⬜ Not started | — | WhatsApp WABA |
-| L1 — RW1 | ⬜ Not started | — | gooclaim-engine — Claim status |
-| L1 — RW2 | ⬜ Not started | — | gooclaim-engine — Pending docs + Temporal |
-| L1 — RW3 | ⬜ Not started | — | gooclaim-engine — Query reason + L3 |
+| L1 — claim-status | ⬜ Not started | — | gooclaim-engine — Claim status |
+| L1 — pending-docs | ⬜ Not started | — | gooclaim-engine — Pending docs + Temporal |
+| L1 — query-reason | ⬜ Not started | — | gooclaim-engine — Query reason + L3 |
 | L5 Outbound Engine | ⬜ Not started | — | gooclaim-outbound — Templates + retry |
 | Audit Ledger | ⬜ Not started | — | gooclaim-audit — BullMQ + 7yr retention |
 | L4 Learning Loop | ⬜ Not started | — | gooclaim-learning — Passive mode only |
@@ -305,7 +362,10 @@ Status values: ⬜ Not started · 🟡 In progress · ✅ Done (sdx) · 🚀 Dep
 
 - [2026-03] ModelGatewayClient: always pass `tenant_id` in request context — omitting it causes fallback to default model with no audit trail
 - [2026-03] BullMQ workers: set `concurrency: 1` for REGULATORY tier audit events — order must be guaranteed
-- [Add new patterns here as discovered]
+- [2026-04] TypeScript `noUnusedLocals: true`: `_` prefix suppresses warnings only for **function parameters**, NOT local `const` declarations — delete unused local consts entirely
+- [2026-04] Lucide icon type in TypeScript: use `LucideIcon` (from lucide-react), NOT `ComponentType<{size?: number}>` — Lucide's size prop is `string | number`
+- [2026-04] Vite + TypeScript: always create `src/vite-env.d.ts` with `declare module '*.png'` etc. for image imports to type-check
+- [2026-04] `actions/setup-node@v4` with `cache: "npm"` requires `package-lock.json` — omit the cache option for Vite/pnpm projects that don't have one
 
 ---
 

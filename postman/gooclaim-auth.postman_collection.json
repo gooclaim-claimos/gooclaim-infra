@@ -1,0 +1,411 @@
+{
+  "info": {
+    "name": "gooclaim-auth",
+    "description": "gooclaim-auth service — JWT, RBAC, MFA, Consent (DPDP), Service Accounts\n\nBase URL: http://localhost:8002\n\nFlow:\n1. POST /auth/login → access_token + refresh_token\n2. Set {{access_token}} variable from response\n3. Use Bearer {{access_token}} on all protected routes",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8002" },
+    { "key": "access_token", "value": "" },
+    { "key": "refresh_token", "value": "" },
+    { "key": "session_id", "value": "" },
+    { "key": "tenant_id", "value": "gooclaim-dev" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /auth/login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var r = pm.response.json();",
+                  "if (r.access_token) {",
+                  "  pm.collectionVariables.set('access_token', r.access_token);",
+                  "  pm.collectionVariables.set('refresh_token', r.refresh_token);",
+                  "  pm.collectionVariables.set('session_id', r.session_id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@gooclaim.com\",\n  \"password\": \"test@1234\",\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /auth/refresh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var r = pm.response.json();",
+                  "if (r.access_token) {",
+                  "  pm.collectionVariables.set('access_token', r.access_token);",
+                  "  pm.collectionVariables.set('refresh_token', r.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/refresh",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /auth/logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": "{{base_url}}/auth/logout"
+          }
+        },
+        {
+          "name": "GET /auth/me",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": "{{base_url}}/auth/me"
+          }
+        },
+        {
+          "name": "POST /auth/introspect",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/introspect",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{access_token}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /auth/mfa/verify",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/mfa/verify",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"code\": \"123456\",\n  \"method\": \"totp\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /auth/machine/token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-GRPC-Secret", "value": "local-dev-grpc-secret" }
+            ],
+            "url": "{{base_url}}/auth/machine/token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_id\": \"gooclaim-audit\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /auth/.well-known/jwks.json",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/auth/.well-known/jwks.json"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Password",
+      "item": [
+        {
+          "name": "POST /auth/password/reset-request",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/password/reset-request",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@gooclaim.com\",\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /auth/password/reset",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/password/reset",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<reset-token-from-email>\",\n  \"new_password\": \"NewPass@1234\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "GET /users",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": "{{base_url}}/users"
+          }
+        },
+        {
+          "name": "POST /users/invite",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{base_url}}/users/invite",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@gooclaim.com\",\n  \"role_name\": \"OPS_VIEWER\",\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /users/invite/accept",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/users/invite/accept",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<invite-token>\",\n  \"password\": \"NewPass@1234\"\n}"
+            }
+          }
+        },
+        {
+          "name": "PATCH /users/{user_id}/roles",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{base_url}}/users/<user_id>/roles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role_name\": \"KB_MANAGER\",\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Consent (DPDP)",
+      "item": [
+        {
+          "name": "POST /consent",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{base_url}}/consent",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_identifier_hash\": \"<sha256-hash>\",\n  \"user_id\": \"<user-uuid>\",\n  \"ip_address\": \"127.0.0.1\",\n  \"user_agent\": \"PostmanRuntime\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /consent/{user_identifier_hash}",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": "{{base_url}}/consent/<user_identifier_hash>"
+          }
+        },
+        {
+          "name": "DELETE /consent/{user_identifier_hash}",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": "{{base_url}}/consent/<user_identifier_hash>"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Service Accounts",
+      "item": [
+        {
+          "name": "POST /service-accounts",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{base_url}}/service-accounts",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_id\": \"gooclaim-engine\",\n  \"description\": \"L1 workflow engine\",\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE /service-accounts/{id}",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": "{{base_url}}/service-accounts/<service_account_id>"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin — Break Glass",
+      "item": [
+        {
+          "name": "POST /admin/break-glass/request",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{base_url}}/admin/break-glass/request",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Production incident — need emergency access\",\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /admin/break-glass/approve",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{base_url}}/admin/break-glass/approve",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"<break-glass-session-id>\",\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Integrations — Ingestion",
+      "item": [
+        {
+          "name": "GET /integrations/ingestion",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": "{{base_url}}/integrations/ingestion"
+          }
+        },
+        {
+          "name": "POST /integrations/ingestion/api-key (CMS)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{base_url}}/integrations/ingestion/api-key",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_type\": \"cms\",\n  \"display_name\": \"MediAssist CMS\",\n  \"api_key\": \"<cms-api-key>\",\n  \"base_url\": \"https://cms.example.com\",\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "DELETE /integrations/ingestion/{source_type}",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": "{{base_url}}/integrations/ingestion/cms"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Integrations — Channels",
+      "item": [
+        {
+          "name": "GET /integrations/channels",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": "{{base_url}}/integrations/channels"
+          }
+        },
+        {
+          "name": "POST /integrations/channels (WhatsApp)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{base_url}}/integrations/channels",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channel_type\": \"whatsapp\",\n  \"channel_config\": {\n    \"phone_number_id\": \"1234567890\",\n    \"waba_id\": \"waba_001\"\n  },\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /integrations/channels/{type}/secret",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": "{{base_url}}/integrations/channels/whatsapp/secret"
+          }
+        },
+        {
+          "name": "DELETE /integrations/channels/{type}",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": "{{base_url}}/integrations/channels/whatsapp"
+          }
+        }
+      ]
+    }
+  ]
+}

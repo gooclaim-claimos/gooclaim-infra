@@ -1,0 +1,205 @@
+{
+  "info": {
+    "name": "gooclaim-template-registry",
+    "description": "gooclaim-template-registry — Template storage, approval workflow, runtime hot-path lookup\n\nPort: 8004\n\nState machine: DRAFT → submit → PENDING → approve → APPROVED\n                PENDING → reject → DRAFT\n                APPROVED → rollback → DRAFT\n\nFlow:\n1. POST /admin/templates — create template (DRAFT)\n2. POST /admin/templates/{id}/variants — add channel variant\n3. POST .../submit — DRAFT → PENDING\n4. POST .../approve — PENDING → APPROVED\n5. GET /templates/{id} — runtime lookup (L1/L5/L6 hot path)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",    "value": "http://localhost:8004" },
+    { "key": "tenant_id",   "value": "gooclaim-dev" },
+    { "key": "template_id", "value": "" },
+    { "key": "variant_id",  "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Runtime (Hot Path)",
+      "item": [
+        {
+          "name": "GET /templates/{template_id} — lookup approved",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/templates/{{template_id}}?channel=WHATSAPP&language=HI_EN&tenant_id={{tenant_id}}&fallback=true",
+              "host": ["{{base_url}}"],
+              "path": ["templates", "{{template_id}}"],
+              "query": [
+                { "key": "channel",    "value": "WHATSAPP" },
+                { "key": "language",   "value": "HI_EN" },
+                { "key": "tenant_id",  "value": "{{tenant_id}}" },
+                { "key": "fallback",   "value": "true" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /templates/{template_id} — no fallback",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/templates/{{template_id}}?channel=WHATSAPP&language=HI&tenant_id={{tenant_id}}&fallback=false",
+              "host": ["{{base_url}}"],
+              "path": ["templates", "{{template_id}}"],
+              "query": [
+                { "key": "channel",   "value": "WHATSAPP" },
+                { "key": "language",  "value": "HI" },
+                { "key": "tenant_id", "value": "{{tenant_id}}" },
+                { "key": "fallback",  "value": "false" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Management — Templates",
+      "item": [
+        {
+          "name": "GET /admin/templates — list all",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/admin/templates?tenant_id={{tenant_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "templates"],
+              "query": [
+                { "key": "tenant_id", "value": "{{tenant_id}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /admin/templates — create (DRAFT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var r = pm.response.json();",
+                  "if (r.template_id) {",
+                  "  pm.collectionVariables.set('template_id', r.template_id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/admin/templates",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"template_id\": \"RW1_STATUS_UPDATE\",\n  \"workflow_id\": \"claim-status\",\n  \"description\": \"Claim status update template\",\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"created_by\": \"test@gooclaim.com\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Management — Variants",
+      "item": [
+        {
+          "name": "POST /admin/templates/{id}/variants — add variant (DRAFT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var r = pm.response.json();",
+                  "if (r.id) {",
+                  "  pm.collectionVariables.set('variant_id', r.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/admin/templates/{{template_id}}/variants",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channel\": \"WHATSAPP\",\n  \"language\": \"HI_EN\",\n  \"content\": \"Aapka claim {{claim_id}} ka status: {{status}}. Koi sawaal? Reply karein.\",\n  \"variables\": {\n    \"claim_id\": \"string\",\n    \"status\": \"string\"\n  },\n  \"version\": \"1.0.0\",\n  \"external_approval_required\": false,\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"submitted_by\": \"test@gooclaim.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "PATCH /admin/templates/{id}/variants/{vid} — update (DRAFT only)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/admin/templates/{{template_id}}/variants/{{variant_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Aapka claim {{claim_id}} ka status: {{status}}. Updated content.\",\n  \"version\": \"1.0.1\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Approval Workflow",
+      "item": [
+        {
+          "name": "POST .../submit — DRAFT → PENDING",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/admin/templates/{{template_id}}/variants/{{variant_id}}/submit",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actor_id\": \"test@gooclaim.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST .../approve — PENDING → APPROVED",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/admin/templates/{{template_id}}/variants/{{variant_id}}/approve",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actor_id\": \"test@gooclaim.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST .../reject — PENDING → DRAFT",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/admin/templates/{{template_id}}/variants/{{variant_id}}/reject",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actor_id\": \"test@gooclaim.com\",\n  \"reason\": \"Content needs revision — add claim ID variable\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST .../rollback — APPROVED → DRAFT",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/admin/templates/{{template_id}}/variants/{{variant_id}}/rollback",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actor_id\": \"test@gooclaim.com\"\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
