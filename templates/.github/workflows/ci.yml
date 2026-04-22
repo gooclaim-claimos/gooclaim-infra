@@ -16,11 +16,14 @@ concurrency:
 
 jobs:
   ci:
+    permissions:
+      contents: write
     uses: gooclaim-claimos/gooclaim-infra/.github/workflows/_reusable-ci.yml@main
     with:
-      service-name: gooclaim-gateway      # ← SIRF YEH CHANGE KARO har repo mein
+      service-name: gooclaim-service      # ← SIRF YEH CHANGE KARO har repo mein
       python-version: "3.12"
       coverage-threshold: 80
       skip-docker: false
     secrets:
       GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_PAT: ${{ secrets.GH_PAT }}

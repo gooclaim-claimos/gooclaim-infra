@@ -22,24 +22,28 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.set.outputs.environment }}
+      environment_upper: ${{ steps.set.outputs.environment_upper }}
     steps:
       - id: set
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+            ENV="${{ github.event.inputs.environment }}"
           elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
-            echo "environment=dev" >> $GITHUB_OUTPUT
+            ENV="dev"
           elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            echo "environment=nprd" >> $GITHUB_OUTPUT
+            ENV="nprd"
           fi
+          echo "environment=${ENV}" >> $GITHUB_OUTPUT
+          echo "environment_upper=${ENV^^}" >> $GITHUB_OUTPUT
 
   deploy:
     needs: resolve-env
     uses: gooclaim-claimos/gooclaim-infra/.github/workflows/_reusable-deploy.yml@main
     with:
-      service-name: gooclaim-gateway      # ← SIRF YEH CHANGE KARO har repo mein
+      service-name: gooclaim-service      # ← SIRF YEH CHANGE KARO har repo mein
       environment: ${{ needs.resolve-env.outputs.environment }}
       sha: ${{ github.sha }}
     secrets:
-      KUBE_CONFIG: ${{ secrets[format('{0}_KUBE_CONFIG', upper(needs.resolve-env.outputs.environment))] }}
-      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      KUBE_CONFIG: ${{ secrets[format('{0}_KUBE_CONFIG', needs.resolve-env.outputs.environment_upper)] }}
+      GHCR_TOKEN: ${{ secrets.GH_PAT }}
+      GH_PAT: ${{ secrets.GH_PAT }}

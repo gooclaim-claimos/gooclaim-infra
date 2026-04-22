@@ -1,0 +1,267 @@
+# gooclaim-infra/.github/workflows/_reusable-ci.yml
+#
+# MASTER CI WORKFLOW — sirf yahan update karo
+# Sab service repos yahan se call karte hain
+# Koi bhi change yahan karo → sab repos ko automatically mil jaata hai
+#
+# Called by: gooclaim-gateway, gooclaim-engine, gooclaim-truth, etc.
+# Caller file: .github/workflows/ci.yml (sirf 15 lines hoti hai)
+
+name: Reusable CI
+
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        required: true
+        type: string
+        description: "e.g. gooclaim-gateway"
+      python-version:
+        required: false
+        type: string
+        default: "3.12"
+      coverage-threshold:
+        required: false
+        type: number
+        default: 80
+      skip-docker:
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      GHCR_TOKEN:
+        required: false
+      GH_PAT:
+        required: true
+        description: "PAT with read access to gooclaim-shared (private repo)"
+
+jobs:
+
+  # ─────────────────────────────────────────
+  # JOB 1 — LINT (ruff)
+  # Fails fast — ~10s
+  # ─────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: pip
+
+      - name: Configure git for private repos
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          echo "machine github.com login x-access-token password $GH_PAT" >> ~/.netrc
+          chmod 600 ~/.netrc
+
+      - run: pip install tox
+      - run: tox -e lint
+
+  # ─────────────────────────────────────────
+  # JOB 2 — TYPE CHECK (pyright)
+  # ─────────────────────────────────────────
+  typecheck:
+    name: Type check
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: pip
+
+      - name: Configure git for private repos
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          echo "machine github.com login x-access-token password $GH_PAT" >> ~/.netrc
+          chmod 600 ~/.netrc
+
+      - run: pip install tox
+      - run: tox -e typecheck
+
+  # ─────────────────────────────────────────
+  # JOB 3 — SECURITY (bandit + safety + trufflehog)
+  # ─────────────────────────────────────────
+  security:
+    name: Security scan
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: pip
+
+      - name: Configure git for private repos
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          echo "machine github.com login x-access-token password $GH_PAT" >> ~/.netrc
+          chmod 600 ~/.netrc
+
+      - run: pip install tox
+      - run: tox -e security
+
+      - name: TruffleHog — secret scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          extra_args: --only-verified
+        continue-on-error: true
+
+  # ─────────────────────────────────────────
+  # JOB 4 — TEST + COVERAGE
+  # Gate: coverage-threshold input (default 80%)
+  # ─────────────────────────────────────────
+  test:
+    name: Test + coverage (≥${{ inputs.coverage-threshold }}%)
+    runs-on: ubuntu-latest
+    needs: [typecheck, security]
+    permissions:
+      contents: write
+
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_USER: gooclaim
+          POSTGRES_DB: gooclaim_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://gooclaim:testpass@localhost:5432/gooclaim_test
+      REDIS_URL: redis://localhost:6379
+      ENV: test
+      COVERAGE_THRESHOLD: ${{ inputs.coverage-threshold }}
+      GRPC_JWT_SECRET: test-jwt-secret-for-ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: pip
+
+      - name: Configure git for private repos
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          echo "machine github.com login x-access-token password $GH_PAT" >> ~/.netrc
+          chmod 600 ~/.netrc
+
+      - run: pip install tox
+
+      - run: |
+          tox -e test -- \
+            --cov-fail-under=${{ inputs.coverage-threshold }}
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-${{ inputs.service-name }}
+          path: htmlcov/
+
+      - name: Generate and commit coverage badge
+        run: |
+          pip install "genbadge[coverage]"
+          mkdir -p badges
+          genbadge coverage -i coverage.xml -o badges/coverage.svg
+
+          # Preserve SVG OUTSIDE the repo tree before any git operations.
+          # Reason: the orphan-branch bootstrap below runs `git rm -rf .`
+          # which deletes untracked files including badges/coverage.svg.
+          # Without this copy, the later `cp badges/coverage.svg ...` fails
+          # on the first-ever CI run (when the badges branch doesn't exist yet).
+          cp badges/coverage.svg /tmp/coverage.svg
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Auto-create badges branch if it doesn't exist
+          if ! git ls-remote --exit-code origin badges > /dev/null 2>&1; then
+            PREV_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+            git checkout --orphan badges
+            git rm -rf . --quiet
+            echo "# Coverage badges" > README.md
+            git add README.md
+            git commit -m "chore: init badges branch [skip ci]"
+            git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:badges
+            git checkout "$PREV_BRANCH"
+          fi
+          git fetch origin badges
+          git worktree add /tmp/badges-worktree origin/badges
+          # Use the /tmp copy — the in-tree badges/coverage.svg may have been
+          # wiped by the orphan-branch bootstrap above.
+          cp /tmp/coverage.svg /tmp/badges-worktree/coverage.svg
+          cd /tmp/badges-worktree
+          git add coverage.svg
+          git diff --cached --quiet || git commit -m "chore: update coverage badge [skip ci]"
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:badges
+          # ── Auto-fix README badge URL ─────────────────────────────────────────
+          # Relative path "badges/coverage.svg" breaks with an orphan badges branch —
+          # it looks for the file in main/develop, not the badges branch.
+          # Correct format: https://raw.githubusercontent.com/{repo}/badges/coverage.svg
+          # This block self-heals any repo that still has the wrong relative path.
+          cd $GITHUB_WORKSPACE
+          CORRECT_URL="https://raw.githubusercontent.com/${{ github.repository }}/badges/coverage.svg"
+          if grep -qF '![Coverage](badges/coverage.svg)' README.md 2>/dev/null; then
+            sed -i "s|!\[Coverage\](badges/coverage\.svg)|![Coverage](${CORRECT_URL})|g" README.md
+            git add README.md
+            if ! git diff --cached --quiet; then
+              git commit -m "fix(badge): use absolute raw URL for coverage badge [skip ci]"
+              git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:${{ github.ref_name }}
+            fi
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─────────────────────────────────────────
+  # JOB 5 — DOCKER BUILD CHECK
+  # Skippable via skip-docker input
+  # ─────────────────────────────────────────
+  docker-build:
+    name: Docker build check
+    runs-on: ubuntu-latest
+    needs: test
+    if: ${{ !inputs.skip-docker }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build ${{ inputs.service-name }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: gooclaim-claimos/${{ inputs.service-name }}:pr-${{ github.sha }}
+          build-args: GH_PAT=${{ secrets.GH_PAT }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

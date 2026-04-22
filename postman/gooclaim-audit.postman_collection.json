@@ -1,0 +1,197 @@
+{
+  "info": {
+    "name": "gooclaim-audit",
+    "description": "gooclaim-audit service — Immutable audit ledger, IRDAI compliance, SHA-256 integrity chain\n\nBase URL: http://localhost:8001\n\nAll queries are tenant-scoped (tenant_id mandatory).\nUse tenant_id=gooclaim-dev for local testing.\n\nFlow:\n1. GET /health — verify service is up\n2. GET /v1/audit/events — list events (auto-sets event_id variable)\n3. GET /v1/audit/events/{event_id} — fetch single event\n4. GET /v1/audit/integrity/check — verify hash chain\n5. GET /v1/audit/export — IRDAI export (JSON or CSV)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8001" },
+    { "key": "tenant_id", "value": "gooclaim-dev" },
+    { "key": "event_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Events",
+      "item": [
+        {
+          "name": "GET /v1/audit/events — list all",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var r = pm.response.json();",
+                  "if (r.items && r.items.length > 0) {",
+                  "  pm.collectionVariables.set('event_id', r.items[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/v1/audit/events?tenant_id={{tenant_id}}&page=1&page_size=20",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "audit", "events"],
+              "query": [
+                { "key": "tenant_id", "value": "{{tenant_id}}" },
+                { "key": "page", "value": "1" },
+                { "key": "page_size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /v1/audit/events — regulatory only (IRDAI)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/v1/audit/events?tenant_id={{tenant_id}}&regulatory_only=true&page=1&page_size=50",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "audit", "events"],
+              "query": [
+                { "key": "tenant_id", "value": "{{tenant_id}}" },
+                { "key": "regulatory_only", "value": "true" },
+                { "key": "page", "value": "1" },
+                { "key": "page_size", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /v1/audit/events — filter by event_type",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/v1/audit/events?tenant_id={{tenant_id}}&event_type=LOGIN_SUCCESS",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "audit", "events"],
+              "query": [
+                { "key": "tenant_id", "value": "{{tenant_id}}" },
+                { "key": "event_type", "value": "LOGIN_SUCCESS" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /v1/audit/events — date range",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/v1/audit/events?tenant_id={{tenant_id}}&from=2026-04-01T00:00:00&to=2026-04-30T23:59:59",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "audit", "events"],
+              "query": [
+                { "key": "tenant_id", "value": "{{tenant_id}}" },
+                { "key": "from", "value": "2026-04-01T00:00:00" },
+                { "key": "to", "value": "2026-04-30T23:59:59" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /v1/audit/events/{event_id}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/v1/audit/events/{{event_id}}?tenant_id={{tenant_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "audit", "events", "{{event_id}}"],
+              "query": [
+                { "key": "tenant_id", "value": "{{tenant_id}}" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Export (IRDAI)",
+      "item": [
+        {
+          "name": "GET /v1/audit/export — JSON",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/v1/audit/export?tenant_id={{tenant_id}}&format=json&regulatory_only=true",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "audit", "export"],
+              "query": [
+                { "key": "tenant_id", "value": "{{tenant_id}}" },
+                { "key": "format", "value": "json" },
+                { "key": "regulatory_only", "value": "true" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /v1/audit/export — CSV",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/v1/audit/export?tenant_id={{tenant_id}}&format=csv&regulatory_only=true",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "audit", "export"],
+              "query": [
+                { "key": "tenant_id", "value": "{{tenant_id}}" },
+                { "key": "format", "value": "csv" },
+                { "key": "regulatory_only", "value": "true" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /v1/audit/export — all events date range",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/v1/audit/export?tenant_id={{tenant_id}}&format=json&regulatory_only=false&from=2026-04-01T00:00:00&to=2026-04-30T23:59:59",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "audit", "export"],
+              "query": [
+                { "key": "tenant_id", "value": "{{tenant_id}}" },
+                { "key": "format", "value": "json" },
+                { "key": "regulatory_only", "value": "false" },
+                { "key": "from", "value": "2026-04-01T00:00:00" },
+                { "key": "to", "value": "2026-04-30T23:59:59" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Integrity",
+      "item": [
+        {
+          "name": "GET /v1/audit/integrity/check",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/v1/audit/integrity/check?tenant_id={{tenant_id}}&limit=1000",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "audit", "integrity", "check"],
+              "query": [
+                { "key": "tenant_id", "value": "{{tenant_id}}" },
+                { "key": "limit", "value": "1000" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

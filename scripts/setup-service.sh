@@ -16,6 +16,10 @@ if [ -z "$SERVICE" ]; then
   exit 1
 fi
 
+# Python package name — hyphens → underscores
+# gooclaim-engine → gooclaim_engine
+PACKAGE=$(echo "$SERVICE" | tr '-' '_')
+
 DEST="../$SERVICE"
 
 if [ -d "$DEST" ]; then
@@ -23,46 +27,403 @@ if [ -d "$DEST" ]; then
   exit 1
 fi
 
+# Detect which layer rule to copy based on service name
+case "$SERVICE" in
+  *gateway*)  LAYER_RULE="l0-gateway.md" ;;
+  *engine*)   LAYER_RULE="l1-workflow.md" ;;
+  *truth*)    LAYER_RULE="l2-truth.md" ;;
+  *knowledge*)LAYER_RULE="l3-knowledge.md" ;;
+  *learning*) LAYER_RULE="l4-learning.md" ;;
+  *outbound*) LAYER_RULE="l5-outbound.md" ;;
+  *policy*)   LAYER_RULE="l6-policy.md" ;;
+  *observe*)  LAYER_RULE="l7-observe.md" ;;
+  *)          LAYER_RULE="" ;;
+esac
+
 echo "Scaffolding $SERVICE..."
 
-# Create directory structure
+# ─── Directory structure ──────────────────────────────────
 mkdir -p "$DEST"/.github/workflows
 mkdir -p "$DEST"/.github/PULL_REQUEST_TEMPLATE
 mkdir -p "$DEST"/.claude/rules
-mkdir -p "$DEST"/src/"$SERVICE"
+mkdir -p "$DEST"/.claude/skills
+mkdir -p "$DEST"/.claude/commands
+mkdir -p "$DEST"/.claude/hooks
+mkdir -p "$DEST"/src/"$PACKAGE"/routes
+mkdir -p "$DEST"/src/"$PACKAGE"/services
+mkdir -p "$DEST"/src/"$PACKAGE"/models
+mkdir -p "$DEST"/src/"$PACKAGE"/connectors
+mkdir -p "$DEST"/migrations
 mkdir -p "$DEST"/tests/unit
 mkdir -p "$DEST"/tests/integration
+mkdir -p "$DEST"/badges
 
-# Copy GitHub templates
-cp templates/.github/workflows/ci.yml     "$DEST"/.github/workflows/ci.yml
-cp templates/.github/workflows/deploy.yml "$DEST"/.github/workflows/deploy.yml
-cp templates/.github/CODEOWNERS           "$DEST"/.github/CODEOWNERS
-cp templates/.github/PULL_REQUEST_TEMPLATE/default.md "$DEST"/.github/PULL_REQUEST_TEMPLATE/default.md
-
-# Copy Claude Code templates
-cp templates/.claude/settings.json        "$DEST"/.claude/settings.json
-
-# Copy project files
-cp templates/tox.ini                      "$DEST"/tox.ini
-cp templates/pyproject.toml               "$DEST"/pyproject.toml
-cp templates/.gitignore                   "$DEST"/.gitignore
-cp templates/CLAUDE.md                    "$DEST"/CLAUDE.md
-cp templates/CLAUDE_SESSION.md            "$DEST"/CLAUDE_SESSION.md
+# ─── GitHub templates ─────────────────────────────────────
+cp templates/.github/workflows/ci.yml                        "$DEST"/.github/workflows/ci.yml
+cp templates/.github/workflows/deploy.yml                    "$DEST"/.github/workflows/deploy.yml
+cp templates/.github/CODEOWNERS                              "$DEST"/.github/CODEOWNERS
+cp templates/.github/PULL_REQUEST_TEMPLATE/default.md        "$DEST"/.github/PULL_REQUEST_TEMPLATE/default.md
 
 # Update service-name in workflow files
-sed -i "s/gooclaim-gateway/$SERVICE/g" "$DEST"/.github/workflows/ci.yml
-sed -i "s/gooclaim-gateway/$SERVICE/g" "$DEST"/.github/workflows/deploy.yml
+sed -i "s/gooclaim-service/$SERVICE/g" "$DEST"/.github/workflows/ci.yml
+sed -i "s/gooclaim-service/$SERVICE/g" "$DEST"/.github/workflows/deploy.yml
 
+# ─── Claude Code setup ────────────────────────────────────
+# settings.json (hooks config)
+cat > "$DEST"/.claude/settings.json <<EOF
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/check-no-secrets.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+EOF
+
+# Secret check hook
+cp .claude/hooks/check-no-secrets.sh "$DEST"/.claude/hooks/check-no-secrets.sh
+chmod +x "$DEST"/.claude/hooks/check-no-secrets.sh
+
+# Layer-specific rule (auto-detected)
+if [ -n "$LAYER_RULE" ]; then
+  cp "templates/.claude/rules/$LAYER_RULE" "$DEST"/.claude/rules/"$LAYER_RULE"
+fi
+
+# Skills — all 4
+cp templates/.claude/skills/docs.md         "$DEST"/.claude/skills/docs.md
+cp templates/.claude/skills/new-adr.md      "$DEST"/.claude/skills/new-adr.md
+cp templates/.claude/skills/session-end.md  "$DEST"/.claude/skills/session-end.md
+cp templates/.claude/skills/test.md         "$DEST"/.claude/skills/test.md
+
+# Commands — all 4 (Claude Code slash commands: /docs, /new-adr, /session-end, /test)
+cp templates/.claude/commands/docs.md         "$DEST"/.claude/commands/docs.md
+cp templates/.claude/commands/new-adr.md      "$DEST"/.claude/commands/new-adr.md
+cp templates/.claude/commands/session-end.md  "$DEST"/.claude/commands/session-end.md
+cp templates/.claude/commands/test.md         "$DEST"/.claude/commands/test.md
+
+# ─── Project files ────────────────────────────────────────
+cp templates/tox.ini        "$DEST"/tox.ini
+cp templates/pyproject.toml "$DEST"/pyproject.toml
+cp templates/.gitignore     "$DEST"/.gitignore
+cp templates/CLAUDE.md      "$DEST"/CLAUDE.md
+cp templates/CLAUDE_SESSION.md "$DEST"/CLAUDE_SESSION.md
+cp templates/Dockerfile     "$DEST"/Dockerfile
+
+# ─── Source skeleton ──────────────────────────────────────
+touch "$DEST"/src/"$PACKAGE"/__init__.py
+touch "$DEST"/src/"$PACKAGE"/routes/__init__.py
+touch "$DEST"/src/"$PACKAGE"/services/__init__.py
+touch "$DEST"/src/"$PACKAGE"/models/__init__.py
+touch "$DEST"/src/"$PACKAGE"/connectors/__init__.py
+touch "$DEST"/migrations/.gitkeep
+
+cat > "$DEST"/src/"$PACKAGE"/config.py <<EOF
+from pydantic_settings import BaseSettings
+
+
+class Settings(BaseSettings):
+    env: str = "dev"
+    log_level: str = "INFO"
+
+    database_url: str
+    redis_url: str = "redis://localhost:6379"
+
+    class Config:
+        env_file = ".env"
+        case_sensitive = False
+
+
+settings = Settings()
+EOF
+
+cat > "$DEST"/src/"$PACKAGE"/main.py <<EOF
+from fastapi import FastAPI
+
+from .config import settings
+
+app = FastAPI(title="$SERVICE", docs_url="/docs" if settings.env != "prod" else None)
+
+
+@app.get("/health")
+async def health() -> dict:
+    return {"status": "ok", "service": "$SERVICE", "env": settings.env}
+EOF
+
+# ─── Test skeleton ────────────────────────────────────────
+cat > "$DEST"/tests/conftest.py <<EOF
+import pytest
+
+
+# Add shared fixtures here
+# Example:
+# @pytest.fixture
+# def db_session(): ...
+EOF
+
+touch "$DEST"/tests/unit/.gitkeep
+touch "$DEST"/tests/integration/.gitkeep
+
+# ─── Docker local dev ─────────────────────────────────────
+cat > "$DEST"/docker-compose.yml <<EOF
+# Local development only — not for production
+version: "3.9"
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src   # hot reload in dev
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: gooclaim
+      POSTGRES_PASSWORD: localpass
+      POSTGRES_DB: gooclaim_dev
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "gooclaim"]
+      interval: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+EOF
+
+cat > "$DEST"/.dockerignore <<EOF
+.git
+.github
+.claude
+.tox
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+htmlcov
+coverage.xml
+badges
+.env
+.env.*
+tests
+docs
+*.md
+EOF
+
+# ─── README skeleton ──────────────────────────────────────
+cat > "$DEST"/README.md <<EOF
+# $SERVICE
+
+> Part of [Gooclaim](https://github.com/gooclaim-claimos) — India's Agentic Claims OS
+
+[![CI](https://github.com/gooclaim-claimos/$SERVICE/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gooclaim-claimos/$SERVICE/actions/workflows/ci.yml)
+![Coverage](badges/coverage.svg)
+[![Python](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org/)
+[![Version](https://img.shields.io/badge/version-0.1.0-green)](pyproject.toml)
+
+---
+
+## Table of Contents
+
+1. [What This Service Does](#what-this-service-does)
+2. [Architecture & Layer](#architecture--layer)
+3. [Quick Start](#quick-start)
+4. [API Reference](#api-reference)
+5. [Configuration](#configuration)
+6. [Database / Models](#database--models)
+7. [Testing](#testing)
+8. [CI/CD Pipeline](#cicd-pipeline)
+9. [Deployment](#deployment)
+10. [Runbooks](#runbooks)
+11. [Docs](#docs)
+12. [Contributing](#contributing)
+
+---
+
+## What This Service Does
+
+TODO: Add description — what it does, who calls it, what it does NOT do.
+
+---
+
+## Architecture & Layer
+
+TODO: ASCII diagram showing upstream → this service → downstream.
+
+**Upstream:** TODO
+**Downstream:** TODO
+
+---
+
+## Quick Start
+
+\`\`\`bash
+pip install -e ".[dev]"
+cp .env.example .env
+docker compose up
+tox -e test
+tox
+\`\`\`
+
+---
+
+## API Reference
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| \`GET\` | \`/health\` | None | Health check |
+| \`GET\` | \`/metrics\` | None | Prometheus metrics |
+
+TODO: Add service endpoints.
+
+---
+
+## Configuration
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| \`DATABASE_URL\` | Yes | — | PostgreSQL connection string |
+| \`REDIS_URL\` | No | \`redis://localhost:6379\` | Redis URL |
+| \`ENV\` | No | \`dev\` | Environment (dev/sdx/nprd/prod) |
+| \`LOG_LEVEL\` | No | \`INFO\` | Log level |
+
+---
+
+## Database / Models
+
+TODO: List tables and their purpose.
+
+\`\`\`bash
+alembic upgrade head
+alembic downgrade -1
+\`\`\`
+
+---
+
+## Testing
+
+\`\`\`bash
+tox -e lint       # ruff
+tox -e typecheck  # pyright strict
+tox -e test       # pytest + coverage (min 80%)
+tox               # all checks
+\`\`\`
+
+Coverage gate: **80%**
+
+---
+
+## CI/CD Pipeline
+
+| Branch | Auto Deploy |
+|--------|-------------|
+| \`develop\` | \`dev\` environment |
+| \`main\` | \`nprd\` environment |
+| \`main\` + manual approval | \`prod\` environment |
+
+---
+
+## Deployment
+
+\`\`\`bash
+# Rollback
+kubectl set image deployment/$SERVICE \\
+  $SERVICE=ghcr.io/gooclaim-claimos/$SERVICE:<previous-sha> \\
+  -n gooclaim-prod
+\`\`\`
+
+See [\`docs/06-deployment.md\`](docs/06-deployment.md).
+
+---
+
+## Runbooks
+
+| Runbook | When to use |
+|---------|-------------|
+| TODO | TODO |
+
+---
+
+## Docs
+
+| Doc | Description |
+|-----|-------------|
+| [\`docs/00-overview.md\`](docs/00-overview.md) | Purpose, scope |
+| [\`docs/01-architecture.md\`](docs/01-architecture.md) | Flow, design |
+| [\`docs/03-apis.md\`](docs/03-apis.md) | API reference |
+| [\`docs/05-configuration.md\`](docs/05-configuration.md) | All env vars |
+| [\`docs/06-deployment.md\`](docs/06-deployment.md) | Deploy, rollback |
+| [\`docs/10-adr/\`](docs/10-adr/) | Architecture decisions |
+
+---
+
+## Contributing
+
+See [\`CONTRIBUTING.md\`](CONTRIBUTING.md) for branch strategy, commit format, and PR process.
+EOF
+
+# ─── .env.example ─────────────────────────────────────────
+cat > "$DEST"/.env.example <<EOF
+# Copy to .env and fill in values
+# Never commit .env — it's in .gitignore
+
+ENV=dev
+LOG_LEVEL=INFO
+
+# Database
+DATABASE_URL=postgresql://gooclaim:password@localhost:5432/gooclaim_dev
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# Add service-specific vars below
+EOF
+
+# ─── Done ─────────────────────────────────────────────────
 echo ""
-echo "Done. $SERVICE scaffolded at $DEST"
+echo "✓ $SERVICE scaffolded at $DEST"
+echo ""
+echo "What was created:"
+echo "  .github/workflows/ci.yml + deploy.yml  (caller files)"
+echo "  .claude/hooks/check-no-secrets.sh      (secret blocker)"
+if [ -n "$LAYER_RULE" ]; then
+echo "  .claude/rules/$LAYER_RULE              (layer rules)"
+fi
+echo "  .claude/skills/                        (4 skills)"
+echo "  src/$PACKAGE/main.py                   (FastAPI skeleton)"
+echo "  tests/conftest.py                      (pytest config)"
+echo "  Dockerfile, tox.ini, pyproject.toml"
+echo "  README.md, .env.example"
 echo ""
 echo "Next steps:"
-echo "  1. Copy the relevant .claude/rules/l{n}-{layer}.md into $DEST/.claude/rules/"
-echo "  2. Update $DEST/CLAUDE.md with layer-specific context"
-echo "  3. cd $DEST"
-echo "  4. git init"
-echo "  5. git remote add origin https://github.com/gooclaim-claimos/$SERVICE.git"
-echo "  6. git checkout -b main && git add . && git commit -m 'chore: initial project setup'"
+echo "  1. Update CLAUDE.md with layer-specific context"
+echo "  2. cd $DEST"
+echo "  3. git init"
+echo "  4. git remote add origin https://github.com/gooclaim-claimos/$SERVICE.git"
+echo "  5. git checkout -b main"
+echo "  6. git add . && git commit -m 'chore: initial project setup'"
 echo "  7. git push -u origin main"
 echo "  8. git checkout -b develop && git push -u origin develop"
-echo "  9. Set branch protection rules and environments on GitHub."
+echo "  9. Set branch protection + environments on GitHub"

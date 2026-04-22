@@ -1,0 +1,194 @@
+{
+  "info": {
+    "name": "gooclaim-model-gateway",
+    "description": "gooclaim-model-gateway — Azure OAI proxy, virtual keys, budget, circuit breaker\n\nPort: 8005\n\nNEVER call Azure OpenAI directly — always go through this gateway.\n\nModel Aliases (chat): chat-fast | chat-smart | chat-hindi\nModel Aliases (embed): embed-primary | embed-multilingual\nModel Aliases (rerank): rerank-primary\n\nFlow:\n1. POST /v1/admin/virtual-keys — issue VK (shown once, save it)\n2. POST /v1/chat — chat with model_alias + virtual_key\n3. POST /v1/embed — get embeddings\n4. POST /v1/rerank — rerank docs (L3 use)\n5. GET /v1/admin/circuit-breaker/{provider} — check CB state",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",    "value": "http://localhost:8005" },
+    { "key": "tenant_id",   "value": "gooclaim-dev" },
+    { "key": "virtual_key", "value": "" },
+    { "key": "vk_id",       "value": "" },
+    { "key": "trace_id",    "value": "local-test-trace-001" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Virtual Keys",
+      "item": [
+        {
+          "name": "POST /v1/admin/virtual-keys — issue (save raw_key!)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var r = pm.response.json();",
+                  "if (r.raw_key) {",
+                  "  pm.collectionVariables.set('virtual_key', r.raw_key);",
+                  "  pm.collectionVariables.set('vk_id', r.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/v1/admin/virtual-keys",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"caller_service\": \"workflow-engine\",\n  \"label\": \"local-dev-key\",\n  \"daily_token_limit\": 100000,\n  \"rpm_limit\": 60\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /v1/admin/virtual-keys — list",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/v1/admin/virtual-keys?tenant_id={{tenant_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "admin", "virtual-keys"],
+              "query": [{ "key": "tenant_id", "value": "{{tenant_id}}" }]
+            }
+          }
+        },
+        {
+          "name": "DELETE /v1/admin/virtual-keys/{vk_id} — revoke",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/v1/admin/virtual-keys/{{vk_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"revoked_by\": \"test@gooclaim.com\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "item": [
+        {
+          "name": "POST /v1/chat — chat-fast (intent classify)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/v1/chat",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_alias\": \"chat-fast\",\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"You are a helpful claims assistant.\" },\n    { \"role\": \"user\", \"content\": \"Mera claim status kya hai?\" }\n  ],\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"trace_id\": \"{{trace_id}}\",\n  \"caller_service\": \"workflow-engine\",\n  \"virtual_key\": \"{{virtual_key}}\",\n  \"max_tokens\": 10,\n  \"temperature\": 0\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /v1/chat — chat-smart (KB / policy)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/v1/chat",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_alias\": \"chat-smart\",\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"You are a claims knowledge assistant.\" },\n    { \"role\": \"user\", \"content\": \"What documents are needed for a health claim?\" }\n  ],\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"trace_id\": \"{{trace_id}}\",\n  \"caller_service\": \"knowledge-layer\",\n  \"virtual_key\": \"{{virtual_key}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /v1/chat — chat-hindi (Hinglish)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/v1/chat",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_alias\": \"chat-hindi\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"Mera claim kab process hoga?\" }\n  ],\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"trace_id\": \"{{trace_id}}\",\n  \"caller_service\": \"workflow-engine\",\n  \"virtual_key\": \"{{virtual_key}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Embed",
+      "item": [
+        {
+          "name": "POST /v1/embed — embed-primary",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/v1/embed",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_alias\": \"embed-primary\",\n  \"texts\": [\n    \"Claim status update for policy holder\",\n    \"Documents required for health insurance claim\"\n  ],\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"trace_id\": \"{{trace_id}}\",\n  \"caller_service\": \"knowledge-layer\",\n  \"virtual_key\": \"{{virtual_key}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /v1/embed — embed-multilingual (HI+EN)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/v1/embed",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_alias\": \"embed-multilingual\",\n  \"texts\": [\n    \"Mera claim kab milega\",\n    \"When will my claim be processed\"\n  ],\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"trace_id\": \"{{trace_id}}\",\n  \"caller_service\": \"knowledge-layer\",\n  \"virtual_key\": \"{{virtual_key}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rerank",
+      "item": [
+        {
+          "name": "POST /v1/rerank — rerank-primary (L3 use)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/v1/rerank",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_alias\": \"rerank-primary\",\n  \"query\": \"claim documents required\",\n  \"documents\": [\n    \"You need to submit a discharge summary\",\n    \"Policy number is required for all claims\",\n    \"Hospital bills must be original copies\"\n  ],\n  \"top_k\": 2,\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"trace_id\": \"{{trace_id}}\",\n  \"caller_service\": \"knowledge-layer\",\n  \"virtual_key\": \"{{virtual_key}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin — Circuit Breaker",
+      "item": [
+        {
+          "name": "GET /v1/admin/circuit-breaker/{provider} — state",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/v1/admin/circuit-breaker/azure-openai"
+          }
+        },
+        {
+          "name": "POST /v1/admin/circuit-breaker/{provider}/reset",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/v1/admin/circuit-breaker/azure-openai/reset",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenant_id\": \"{{tenant_id}}\",\n  \"trace_id\": \"{{trace_id}}\",\n  \"reason\": \"Manual reset after provider recovery\"\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

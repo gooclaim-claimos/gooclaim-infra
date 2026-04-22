@@ -1,0 +1,102 @@
+{
+  "info": {
+    "name": "gooclaim-connector-hub",
+    "description": "gooclaim-connector-hub — CMS claim fetch, fallback chain (REST→SFTP→RPA), circuit breaker\n\nPort: 8006\nAll routes under /internal — internal service-to-service only (L1/L2 call this)\n\nConnectors: cms_rest | cms_sftp | cms_rpa | doc_tpa\nFallback order: REST → SFTP → RPA (fixed, never skip)\n\nNOTE: /internal/cms/* routes need tenant_id in request.state (injected by auth middleware).\nLocally middleware is not registered — CMS routes return 401 unless called service-to-service.\nHealth + readiness + admin circuit breaker routes work directly.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",   "value": "http://localhost:8006" },
+    { "key": "tenant_id",  "value": "gooclaim-dev" },
+    { "key": "claim_id",   "value": "CLM-001" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health"
+          }
+        },
+        {
+          "name": "GET /readiness",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/readiness"
+          }
+        }
+      ]
+    },
+    {
+      "name": "CMS — Claim Fetch (internal)",
+      "item": [
+        {
+          "name": "GET /internal/cms/claims/{claim_id}",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenant_id}}", "description": "Required by auth middleware — 401 locally without it" }
+            ],
+            "url": "{{base_url}}/internal/cms/claims/{{claim_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin — Circuit Breaker",
+      "item": [
+        {
+          "name": "GET /internal/admin/circuit-breaker/cms_rest",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/internal/admin/circuit-breaker/cms_rest"
+          }
+        },
+        {
+          "name": "GET /internal/admin/circuit-breaker/cms_sftp",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/internal/admin/circuit-breaker/cms_sftp"
+          }
+        },
+        {
+          "name": "GET /internal/admin/circuit-breaker/cms_rpa",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/internal/admin/circuit-breaker/cms_rpa"
+          }
+        },
+        {
+          "name": "GET /internal/admin/circuit-breaker/doc_tpa",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/internal/admin/circuit-breaker/doc_tpa"
+          }
+        },
+        {
+          "name": "POST /internal/admin/circuit-breaker/cms_rest/reset",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/internal/admin/circuit-breaker/cms_rest/reset"
+          }
+        },
+        {
+          "name": "POST /internal/admin/circuit-breaker/cms_sftp/reset",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/internal/admin/circuit-breaker/cms_sftp/reset"
+          }
+        },
+        {
+          "name": "POST /internal/admin/circuit-breaker/cms_rpa/reset",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/internal/admin/circuit-breaker/cms_rpa/reset"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -47,6 +47,30 @@ reportMissingImports = true
 reportMissingTypeStubs = false    # third-party stubs sometimes missing
 
 # ─────────────────────────────────────────
+# PYLINT
+# ─────────────────────────────────────────
+[tool.pylint.main]
+source-roots = ["src"]
+ignore-paths = ["tests", ".tox", ".venv", "src/migrations"]
+
+[tool.pylint.messages_control]
+disable = [
+    "C0114",  # missing-module-docstring — ruff handles style
+    "C0115",  # missing-class-docstring
+    "C0116",  # missing-function-docstring
+    "R0903",  # too-few-public-methods — common in Pydantic models
+    "W0613",  # unused-argument — common in FastAPI route handlers
+]
+
+[tool.pylint.design]
+max-args = 8           # FastAPI routes can have many deps
+max-returns = 6
+max-branches = 12
+
+[tool.pylint.format]
+max-line-length = 100  # match ruff
+
+# ─────────────────────────────────────────
 # PYTEST
 # ─────────────────────────────────────────
 [tool.pytest.ini_options]

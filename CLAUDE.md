@@ -10,30 +10,39 @@
 - Runtime: Python 3.12 (FastAPI) + Node 20 (where needed)
 - Queue: BullMQ (Redis-backed) — 8 queues, security = highest priority
 - DB: PostgreSQL 16 (primary) + Redis 7 (cache/queue)
-- Orchestration: Temporal (RW2 stateful workflows only)
+- Orchestration: Temporal (stateful workflows only — `pending-docs` is the only Temporal workflow in Phase 1)
 - AI: Azure OpenAI via Model Gateway only — never call Azure OAI directly
 - Container: Docker + Kubernetes (GKE)
 - Secrets: AWS Secrets Manager via ESO wrapper — never hardcode secrets
 
 ## Layer Map
 
+L0–L7 are architecture shorthand (docs + diagrams only).
+Wire format (BullMQ, audit DB, logs) uses descriptive slugs — see `ServiceLayer` enum in gooclaim-shared.
+
 ```
-L0  — Channel Gateway     (apps/l0-channel-gateway)
-L1  — Workflow Engine     (apps/l1-workflow-engine)
-L2  — Truth Layer         (apps/l2-truth-layer)
-L3  — Knowledge Layer     (apps/l3-knowledge-layer)
-L4  — Learning Loop       (apps/l4-learning-loop)
-L5  — Outbound Engine     (apps/l5-outbound-engine)
-L6  — Policy Gate         (apps/l6-policy-gate)
-L7  — Observability       (apps/l7-observability)
+Shorthand   Wire format (ServiceLayer value)   Folder
+─────────── ──────────────────────────────── ──────────────────────────
+L0          channel-gateway                  apps/l0-channel-gateway
+L1          workflow-engine                  apps/l1-workflow-engine
+L2          truth-layer                      apps/l2-truth-layer
+L3          knowledge-layer                  apps/l3-knowledge-layer
+L4          learning-loop                    apps/l4-learning-loop
+L5          outbound-engine                  apps/l5-outbound-engine
+L6          policy-gate                      apps/l6-policy-gate
+L7          observability                    apps/l7-observability
+—           hub                              (connector hub, inside L2)
+—           model-gateway                    (Azure OAI proxy)
+—           audit                            (gooclaim-audit — immutable event ledger)
 ```
 
 ## Phase 1 Scope (Pilot)
 
-- Channels: WhatsApp WABA only (no voice, no SMS)
-- Workflows: RW1 (claim status) + RW2 (pending docs) + RW3 (query reason)
+- Channels: WhatsApp WABA only (no voice, no SMS) — P1 only
+- Voice = separate service (`gooclaim-voice`) — P2; has its own ASR/TTS/telephony stack; never embed voice logic in gooclaim-gateway
+- Workflows: `claim-status` + `pending-docs` + `query-reason` (WorkflowID wire values)
 - Languages: HI, EN, HI_EN — config/languages.yml is source of truth
-- Output: Templates only — never free-text LLM generation to users
+- Output: Templates only — never free-text LLM generation to users; templates must be channel-aware (WhatsApp HSM / Voice TTS / SMS / Web JSON)
 - L2 mode: Read-only — no write-back to CMS
 - L4 mode: Passive signal capture — no active learning yet
 
@@ -91,6 +100,31 @@ pnpm db:migrate:rollback
 - Test file: `*.test.ts` or `test_*.py` co-located with source
 - Coverage minimum: 80% lines
 
+## gooclaim-shared — Register First Rule
+
+**Before building any new service, channel, or workflow — register it in `gooclaim-shared` first.**
+
+`gooclaim-shared` is the single source of truth for all platform identifiers.
+If it is not registered here, it does not officially exist in the platform.
+
+| Adding a new... | Register in gooclaim-shared first | Then build |
+|-----------------|-----------------------------------|------------|
+| Service (layer) | `ServiceLayer` enum — new value   | Service repo |
+| Channel         | `ChannelType` enum — new value    | L0 adapter + L5 adapter |
+| Workflow        | `WorkflowID` enum — new value     | L1 workflow + registry.yml |
+| Audit event type| `AuditEventType` enum — new value | Service that emits it |
+| Language        | `Language` enum — new value       | config/languages.yml |
+
+**Why:** Every service imports `gooclaim-shared`. If each service defines its own strings,
+audit DB ends up with `"outbound-engine"`, `"outbound"`, `"L5"` for the same layer —
+IRDAI audit trail breaks, Grafana dashboards break, on-call queries return wrong data.
+
+**Process:**
+1. Open PR in `gooclaim-shared` — add enum value + bump version
+2. Get review + merge
+3. All consuming services update their `gooclaim-shared` dependency
+4. Then build the new service/feature
+
 ## Do Not Touch
 
 - `config/languages.yml` — only update via PR with team review
@@ -104,8 +138,21 @@ pnpm db:migrate:rollback
 - Consent gate (DPDP) is Step 0 — no workflow runs without CONSENT_GIVEN
 - L6 Policy Gate runs on every LLM output — never bypass
 - Templates only in Phase 1 — if you are generating free text for end users, stop
+- Templates are channel-aware — same template ID, different format per channel (WhatsApp HSM / Voice TTS script / SMS short / Web JSON); never hardcode WhatsApp-only format
 - circuit_breaker state (CLOSED/OPEN/HALF_OPEN) must be Redis-backed per tenant
 - fraud_suspect flag at 5+ NOT_FOUND events — do not remove this logic
+
+## gooclaim-template-registry — Cache Rules (Hard Rules)
+
+- Approval state machine: `DRAFT → PENDING → APPROVED` — `rollback()` goes `APPROVED → DRAFT` (not PENDING — rollback = back to editing state)
+- `SV3.get()` ALWAYS runs before `SV1.lookup()` — cache check is mandatory first step
+- `SV1.lookup()` is called ONLY on cache MISS — never call DB on cache HIT
+- Never cache NOT_FOUND responses — negative caching forbidden in P1
+- Cache key pattern: `template:{tenant_id}:{template_id}:{channel}:{language}`
+  - Example: `template:mediassist_001:RW1_STATUS_UPDATE:whatsapp:hi_en`
+  - Global templates: `tenant_id = "global"`
+- TTL: 300s — invalidate on `SV2.approve()`, `SV2.reject()`, `RT8` manual flush
+- Cache invalidation must emit `TEMPLATE_CACHE_INVALIDATED` audit event
 
 ## PR Checklist
 

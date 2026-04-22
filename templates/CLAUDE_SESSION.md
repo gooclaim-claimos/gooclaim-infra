@@ -8,12 +8,12 @@
 ## Current State
 
 ```
-Sprint:        Sprint [X] — [Sprint Name]
-Week:          Week [X] of 16
+Sprint:        Sprint 1 — Template Registry Foundation
+Week:          Week 1 of 16
 Phase:         Phase 1 — Pilot
-Active layer:  [e.g. L1-workflow-engine]
-Build status:  [GREEN / YELLOW / RED]
-Blocking:      [None / describe blocker]
+Active layer:  gooclaim-config / templates
+Build status:  YELLOW — structure decided, templates not yet created
+Blocking:      None — waiting for gooclaim-engine (L1) to know exact template vars needed
 ```
 
 ---
@@ -21,6 +21,44 @@ Blocking:      [None / describe blocker]
 ## Session Log
 
 <!-- Most recent session on top -->
+
+### 2026-04-01 — Team — Session 1
+
+**Started:** IST
+**Ended:** IST
+**Layer / Service:** templates (gooclaim-config) — Template structure decision
+**Branch:** main
+
+**Goal for this session:**
+Document template channel-aware structure decision.
+
+**What was done:**
+- Confirmed: Template Registry must be channel-aware from day 1
+- Updated `.claude/rules/l3-knowledge.md` to reflect channel-aware template requirement
+- No template files changed yet — structure to be built when gooclaim-config is formally set up
+
+**Decisions made:**
+- Templates = channel-aware ALWAYS (not just P1, not retrofitted later)
+- Same template_id, different format per channel: WhatsApp HSM / Voice TTS / SMS short / Web JSON
+- Same template_id, different language: HI / EN / HI_EN
+- Matrix = template_id × channel × language — every combination pre-approved before use
+- Template Registry in `config/template_registry/` — YAML format, version controlled, PR-reviewed
+- Voice TTS template format: tts_script + ssml + max_duration_seconds + dtmf_prompt (see ADR-004)
+
+**Files changed:**
+- `CLAUDE_SESSION.md` — this entry
+- `.claude/rules/l3-knowledge.md` — updated Template Registry description to channel-aware
+
+**What's next:**
+- [ ] Create `config/template_registry/` folder structure
+- [ ] Add RW1_STATUS template with WA + Voice + SMS + Web variants in HI + EN
+- [ ] Add RW2_PENDING_DOCS template variants
+- [ ] Add RW3_QUERY_REASON template variants
+
+**Open questions / blockers:**
+- None
+
+---
 
 ### [DATE] — [Engineer Name] — Session [N]
 
