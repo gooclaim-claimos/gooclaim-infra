@@ -194,6 +194,14 @@ jobs:
           pip install "genbadge[coverage]"
           mkdir -p badges
           genbadge coverage -i coverage.xml -o badges/coverage.svg
+
+          # Preserve SVG OUTSIDE the repo tree before any git operations.
+          # Reason: the orphan-branch bootstrap below runs `git rm -rf .`
+          # which deletes untracked files including badges/coverage.svg.
+          # Without this copy, the later `cp badges/coverage.svg ...` fails
+          # on the first-ever CI run (when the badges branch doesn't exist yet).
+          cp badges/coverage.svg /tmp/coverage.svg
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # Auto-create badges branch if it doesn't exist
@@ -209,7 +217,9 @@ jobs:
           fi
           git fetch origin badges
           git worktree add /tmp/badges-worktree origin/badges
-          cp badges/coverage.svg /tmp/badges-worktree/coverage.svg
+          # Use the /tmp copy — the in-tree badges/coverage.svg may have been
+          # wiped by the orphan-branch bootstrap above.
+          cp /tmp/coverage.svg /tmp/badges-worktree/coverage.svg
           cd /tmp/badges-worktree
           git add coverage.svg
           git diff --cached --quiet || git commit -m "chore: update coverage badge [skip ci]"
