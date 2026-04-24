@@ -10,7 +10,7 @@
 - Runtime: Python 3.12 (FastAPI) + Node 20 (where needed)
 - Queue: BullMQ (Redis-backed) — 8 queues, security = highest priority
 - DB: PostgreSQL 16 (primary) + Redis 7 (cache/queue)
-- Orchestration: Temporal (stateful workflows only — `pending-docs` is the only Temporal workflow in Phase 1)
+- Orchestration: Temporal — stateful workflows (`pending-docs`) + scheduled workers (L3 `kb-miss-checker`, `pgvector-maintenance`; future Scout, re-embedding, etc.). K8s CronJob reserved for infra-level housekeeping (log rotation, cert renewal) OR as temporary fallback when Temporal cluster is not yet deployed — see ADR-006 in `gooclaim-knowledge/docs/10-adr/`.
 - AI: Azure OpenAI via Model Gateway only — never call Azure OAI directly
 - Container: Docker + Kubernetes (GKE)
 - Secrets: AWS Secrets Manager via ESO wrapper — never hardcode secrets
