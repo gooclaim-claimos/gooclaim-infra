@@ -2,7 +2,7 @@
 
 > Central infrastructure repository for [Gooclaim](https://github.com/gooclaim-claimos) — AI-Powered Insurance Claims OS for India.
 >
-> CI/CD pipelines, service scaffolding, architecture docs, runbooks, and shared tooling for all **22 Gooclaim repos** (18 built, 4 planned).
+> CI/CD pipelines, service scaffolding, architecture docs, runbooks, and shared tooling for all **22 Gooclaim repos** — pre-pilot v0.x at various polish levels. See [`VERSIONS.md`](VERSIONS.md) for per-repo status.
 
 [![License](https://img.shields.io/badge/license-private-red)](.)
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org/)
@@ -70,7 +70,7 @@ No service code lives here. Every commit affects downstream repos — treat it w
          ▼
   ┌────────────────────────────────────────────────────────────────────┐
   │  CHANNEL ADAPTER LAYER                                             │
-  │  gooclaim-whatsapp ✅   [voice / sms / email / slack — P2/P3]      │
+  │  gooclaim-whatsapp ✅   [voice / sms / email / slack — v2.0]       │
   │  Pure I/O: webhook → normalise → InteractionEvent → BullMQ         │
   └──────────────────────────────┬─────────────────────────────────────┘
                                  ▼
@@ -82,14 +82,14 @@ No service code lives here. Every commit affects downstream repos — treat it w
                                  │ BullMQ
                                  ▼
   ┌────────────────────────────────────────────────────────────────────┐
-  │  gooclaim-engine (L1) 📋 — Workflow Engine / Agentic Orchestrator  │
+  │  gooclaim-engine ✅ (L1) — Workflow Engine / Agentic Orchestrator  │
   │  RW1 (claim-status) · RW2 (pending-docs, Temporal) · RW3 (query)   │
-  │  Consent Gate (DPDP) Step 0 · Templates-only outbound (Phase 1)    │
+  │  Consent Gate (DPDP) Step 0 · Templates-only outbound (v1.0)       │
   └─────┬───────┬─────────┬──────────┬────────────┬─────────────────────┘
         ▼       ▼         ▼          ▼            ▼
    ┌────────┐ ┌──────────┐ ┌────────┐ ┌──────────┐ ┌──────────────┐
    │truth ✅│ │knowledge │ │learning│ │outbound  │ │observe (L7)  │
-   │(L2)    │ │(L3) 📋   │ │(L4) 📋 │ │(L5) 📋   │ │📋            │
+   │(L2)    │ │(L3) ✅   │ │(L4) 📋 │ │(L5) ✅   │ │✅            │
    └────────┘ └──────────┘ └────────┘ └────┬─────┘ └──────────────┘
                                            │ POST /send
    ┌────────────────────────┐               ▼
@@ -122,8 +122,10 @@ No service code lives here. Every commit affects downstream repos — treat it w
   └────────────────────────────────────────────────────────────────────┘
 ```
 
-**Phase 1 build sequence:**
-`truth ✅` → `engine` (now) → `knowledge` → `outbound` → `observe` (Phase 2: learning active mode + voice/sms/email/slack channels)
+**v1.0 build status (pre-pilot):**
+All v1.0 layers code-complete: `truth ✅` · `engine ✅` · `knowledge ✅` · `outbound ✅` · `observe ✅` · `policy ✅` · `gateway ✅` · `whatsapp ✅`. Plus all platform services (`auth`, `audit`, `model-gateway`, `template-registry`, `tenant-config`, `connector-hub`) and 5 frontends. Pending: cloud deploy + load testing + pilot tenant onboarding (see [`tasks/PILOT_LAUNCH_CHECKLIST.md`](tasks/PILOT_LAUNCH_CHECKLIST.md)).
+
+**v2.0 (post-pilot):** `learning` active mode (per-tenant brain) · `voice` channel · `sms` / `email` / `slack` channels · workflow-studio TPA self-service.
 
 ---
 
@@ -156,7 +158,7 @@ gooclaim-infra/
 │   └── deploy.sh                     # Manual deploy helper
 ├── docs/
 │   ├── architecture.md               # Layer → repo mapping, data flows, module map
-│   ├── repos.md                      # Repo registry (22 services, Phase 1/2 split)
+│   ├── repos.md                      # Repo registry (22 services, v1.0 / v2.0 split)
 │   ├── email-directory.md            # Platform email addresses + purpose
 │   ├── github-guide.md               # Branch protection, secret management
 │   ├── decisions/                    # Platform-wide ADRs (001-005)
@@ -264,7 +266,8 @@ local → dev → sdx → nprd → prod
 
 ## Repo Registry (22 Repos)
 
-Full details in [`docs/repos.md`](docs/repos.md). Summary — **18 built ✅, 4 planned 📋**.
+Full details in [`docs/repos.md`](docs/repos.md) and per-repo state in [`VERSIONS.md`](VERSIONS.md).
+Summary — **all 22 repos exist; 21 code-complete or scaffolded, 1 (`gooclaim-learning`) deferred to v2.0**. Plus auxiliary: `gooclaim-scout` (v1.0 ship-ready) + `gooclaim-mcp-server` (built, 99% cov).
 
 ### Group 1 — Foundation (4 repos, all built)
 
@@ -293,8 +296,8 @@ Full details in [`docs/repos.md`](docs/repos.md). Summary — **18 built ✅, 4 
 |------|------|---------|:------:|
 | `gooclaim-gateway` ✅ | Python | L0 — 3-gate filter, channel-agnostic ingress | Built |
 | `gooclaim-whatsapp` ✅ | Python | WhatsApp adapter (webhook ingest + outbound send) | Built |
-| `gooclaim-voice` 📋 | — | Voice adapter (ASR / TTS / telephony) | P2 |
-| `gooclaim-sms` / `email` / `slack` 📋 | — | Other channel adapters | P2 / P3 |
+| `gooclaim-voice` 📋 | — | Voice adapter (ASR / TTS / telephony) | v2.0 |
+| `gooclaim-sms` / `email` / `slack` 📋 | — | Other channel adapters | v2.0 / v3.0 |
 
 ### Group 4 — Products / UIs (3 repos, all built)
 
@@ -304,16 +307,30 @@ Full details in [`docs/repos.md`](docs/repos.md). Summary — **18 built ✅, 4 
 | `gooclaim-portal` ✅ | TypeScript | Tenant admins | Tenant self-service — claims, connectors, KB, templates |
 | `gooclaim-copilot` ✅ | TypeScript | TPA ops | AI copilot — tickets, KB search, bulk ops (never reaches L5) |
 
-### Group 5 — Service Layers (1 built, 4 planned)
+### Group 5 — Service Layers (5 built, 1 deferred)
 
 | Repo | Lang | Purpose | Status |
 |------|------|---------|:------:|
-| `gooclaim-truth` ✅ | Python | L2 — Claim data fetch (read-only, fail-closed on STALE) | Built |
-| `gooclaim-engine` 📋 | Python | L1 — Workflow engine + agentic orchestrator (RW1/RW2/RW3) | Planned — **next** |
-| `gooclaim-knowledge` 📋 | Python | L3 — RAG (Haystack components + pgvector + TenantFilter) | Planned |
-| `gooclaim-outbound` 📋 | Python | L5 — Template rendering + channel dispatch | Planned |
-| `gooclaim-observe` 📋 | Python | L7 — Metrics, traces, Grafana, OpenTelemetry | Planned |
-| `gooclaim-learning` 📋 | Python | L4 — Passive signal capture (P1), active learning (P2) | Planned |
+| `gooclaim-truth` ✅ | Python | L2 — Claim data fetch (read-only, fail-closed on STALE) | Built (97% cov) |
+| `gooclaim-engine` ✅ | Python | L1 — Workflow engine + agentic orchestrator (RW1/RW2/RW3) | Built |
+| `gooclaim-knowledge` ✅ | Python | L3 — RAG (Haystack components + pgvector + TenantFilter) | Built (92% cov) |
+| `gooclaim-outbound` ✅ | Python | L5 — Template rendering + channel dispatch | Built |
+| `gooclaim-observe` ✅ | Python | L7 — Metrics + Loki + Grafana + Health Aggregator | Built (v0.3.1) |
+| `gooclaim-learning` 📋 | Python | L4 — Passive signal capture (v1.0), active learning (v2.0) | Deferred to v2.0 |
+
+### Group 6 — Auxiliary Services (2 built)
+
+| Repo | Lang | Purpose | Status |
+|------|------|---------|:------:|
+| `gooclaim-scout` ✅ | Python | IRDAI regulatory ingest agent — PydanticAI + 4-tool fallback (Serper/Tavily/Firecrawl/Parallel/BrightData) + Temporal cron + token budget guard | v1.0 ship-ready (98% cov) |
+| `gooclaim-mcp-server` ✅ | Python | MCP server exposing platform tools to internal agents | Built (99% cov) |
+
+### Group 7 — Additional Frontends (2 built)
+
+| Repo | Lang | Users | Purpose | Status |
+|------|------|-------|---------|:------:|
+| `gooclaim-landing-page` ✅ | TypeScript | Public visitors | Marketing site (most polished, v0.3.0) | Built |
+| `gooclaim-workflow-studio` 📋 | TypeScript | Gooclaim ops (v1.1) → TPAs (v2.0) | Visual drag-drop workflow builder (React Flow) | Scaffolded (v0.1.0) — features in v1.1/v2.0 |
 
 ---
 
@@ -351,8 +368,8 @@ Platform-wide ADRs in [`docs/decisions/`](docs/decisions/):
 | [ADR-001](docs/decisions/ADR-001-temporal-rw2.md) | Temporal for `pending-docs` (RW2) stateful workflow |
 | [ADR-002](docs/decisions/ADR-002-guardrails-ai-l6.md) | Guardrails AI for L6 safety gate (T2 tier) |
 | [ADR-003](docs/decisions/ADR-003-haystack-l3.md) | Haystack components for L3 ingestion + retrieval |
-| [ADR-004](docs/decisions/ADR-004-templates-only-phase1.md) | Templates-only output in Phase 1 (no free-text LLM to users) |
-| [ADR-005](docs/decisions/ADR-005-l2-readonly-phase1.md) | L2 Truth Layer is read-only in Phase 1 |
+| [ADR-004](docs/decisions/ADR-004-templates-only-phase1.md) | Templates-only output in v1.0 (no free-text LLM to users) |
+| [ADR-005](docs/decisions/ADR-005-l2-readonly-phase1.md) | L2 Truth Layer is read-only in v1.0 |
 
 **Service-specific ADRs** live in each service's own repo at `docs/10-adr/` (e.g. `gooclaim-knowledge/docs/10-adr/006-temporal-for-scheduled-workers.md`). Cross-repo decisions that affect platform-wide rules are also reflected in root [`CLAUDE.md`](CLAUDE.md).
 
@@ -369,7 +386,7 @@ Non-negotiable platform rules. Break these at your peril — most have complianc
 5. **`gooclaim-gateway` is channel-agnostic** — adding a new channel requires zero gateway changes.
 6. **`connector-hub` is L2's servant** — L2 never calls external APIs (CMS, SFTP, RPA) directly.
 7. **`model-gateway` is the only path to AI providers** — L3 / L6 / L1 never import Azure OpenAI / Sarvam SDKs directly.
-8. **L4 flywheel** — TPA-edited responses become gold data that improves agents over time. Phase 2 active learning; Phase 1 passive capture only.
+8. **L4 flywheel** — TPA-edited responses become gold data that improves agents over time. v2.0 active learning; v1.0 passive capture only.
 9. **Register First Rule** — update `gooclaim-shared` with new `ServiceLayer` / `WorkflowID` / `AuditEventType` / `ChannelType` / `Language` values BEFORE building any new service that uses them.
 10. **`gooclaim-audit` ledger is immutable** — schema changes require migration + IRDAI review. Events are SHA-256 signed. 7-year retention.
 11. **`gooclaim-tenant-config` is the only source of truth for tenant identity + `operational_mode` + workflow config.** Every L0 / L1 service reads it via gRPC `:50051` on the hot path.
@@ -428,8 +445,8 @@ docker compose -f docker-compose.local.yml up -d
 
 **What comes up:**
 - PostgreSQL 16 + pgvector extension
-- Redis 7 (BullMQ queues + cache)
-- Keycloak (local auth provider)
+- Redis 7 (cache + raw `BRPOP/LPUSH` queues with BullMQ-compatible key naming)
+- `gooclaim-auth` (custom Python IdP — RS256 JWT, MFA, RBAC; **not Keycloak**)
 - Temporal (for `pending-docs` + scheduled workers — see ADR-006 in `gooclaim-knowledge`)
 - All `gooclaim-*` services pointing at the above
 
