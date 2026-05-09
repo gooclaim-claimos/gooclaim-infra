@@ -61,3 +61,6 @@ kubeconfig
 
 # Docker
 .dockerignore
+
+# Local-only task tracking (not committed to gooclaim-infra)
+tasks/
