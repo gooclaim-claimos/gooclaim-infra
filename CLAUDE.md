@@ -1,6 +1,6 @@
 # Gooclaim — Project Memory
 > Committed to git. Shared by all engineers. Keep under 200 lines.
-> Last updated: March 2026 | Version: 1.0
+> Last updated: 2026-05-09 | Version: 1.0
 
 ---
 
@@ -8,17 +8,24 @@
 
 - Monorepo: `apps/` (services) + `packages/` (shared libs) + `config/`
 - Runtime: Python 3.12 (FastAPI) + Node 20 (where needed)
-- Queue: BullMQ (Redis-backed) — 8 queues, security = highest priority
-- DB: PostgreSQL 16 (primary) + Redis 7 (cache/queue)
+- Queue (v1.0): **Redis lists** via `redis-py` BRPOP/LPUSH. Keys use BullMQ-compatible naming (`bull:l1_inbox:wait`, `bull:l5_outbox:wait`) so a Node service can join later, but no BullMQ library is used today. Workers = Python pods running BRPOP loops with 5s shutdown grace.
+- Service-to-service RPC (v1.0): **HTTP/JSON via `httpx`** wrapped in `DataroomAsyncClient` (auto-forwards 5 X-* correlation headers + JWT). No gRPC anywhere in v1.0.
+- DB: PostgreSQL 16 (primary) + Redis 7 (cache + queue)
 - Orchestration: Temporal — stateful workflows (`pending-docs`) + scheduled workers (L3 `kb-miss-checker`, `pgvector-maintenance`; future Scout, re-embedding, etc.). K8s CronJob reserved for infra-level housekeeping (log rotation, cert renewal) OR as temporary fallback when Temporal cluster is not yet deployed — see ADR-006 in `gooclaim-knowledge/docs/10-adr/`.
 - AI: Azure OpenAI via Model Gateway only — never call Azure OAI directly
 - Container: Docker + Kubernetes (GKE)
 - Secrets: AWS Secrets Manager via ESO wrapper — never hardcode secrets
 
+### v2.0+ migration triggers (don't migrate without these)
+
+- **Redis lists → BullMQ proper**: only when we need delayed retries, per-tenant rate-limiting, or priority queues that raw lists can't express cleanly.
+- **HTTP → gRPC (per-path)**: only when a specific hot path (e.g. truth-layer ↔ workflow-engine) sustains >> 1000 RPS where HTTP/JSON overhead measurably matters.
+- Migrations are **per-path, not big-bang** — HTTP and gRPC can coexist; raw lists and BullMQ can coexist.
+
 ## Layer Map
 
 L0–L7 are architecture shorthand (docs + diagrams only).
-Wire format (BullMQ, audit DB, logs) uses descriptive slugs — see `ServiceLayer` enum in gooclaim-shared.
+Wire format (queue keys, audit DB, logs) uses descriptive slugs — see `ServiceLayer` enum in gooclaim-shared.
 
 ```
 Shorthand   Wire format (ServiceLayer value)   Folder
