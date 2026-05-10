@@ -64,3 +64,4 @@ kubeconfig
 
 # Local-only task tracking (not committed to gooclaim-infra)
 tasks/
+Gooclaim-Sheets/
