@@ -140,6 +140,54 @@ module "wi_eso" {
   tags = var.tags
 }
 
+# =============================================================================
+# Key Vault secret-writes
+# =============================================================================
+#
+# Sensitive values from PG / Redis / Storage flow from tfstate into AKV here.
+# Non-sensitive operational data (FQDNs, hostnames, account names) stays in
+# Terraform outputs and gets surfaced to pods via ConfigMaps at deploy time —
+# AKV is for SECRETS only.
+#
+# These resources depend on the deployer principal having "Key Vault
+# Administrator" on the vault (granted in modules/keyvault). Group-membership
+# propagation is usually instant for data-plane RBAC; if a fresh KV ever
+# fails first-write, add `time_sleep` for 30s between vault create + secret.
+# =============================================================================
+
+resource "azurerm_key_vault_secret" "postgres_admin_password" {
+  name         = "gooclaim-postgres-admin-password"
+  value        = module.postgres.admin_password
+  key_vault_id = module.keyvault.vault_id
+
+  content_type = "text/plain; postgres-admin-password"
+  tags         = merge(var.tags, { source = "terraform" })
+
+  depends_on = [module.keyvault]
+}
+
+resource "azurerm_key_vault_secret" "redis_primary_key" {
+  name         = "gooclaim-redis-primary-key"
+  value        = module.redis.primary_access_key
+  key_vault_id = module.keyvault.vault_id
+
+  content_type = "text/plain; redis-primary-access-key"
+  tags         = merge(var.tags, { source = "terraform" })
+
+  depends_on = [module.keyvault]
+}
+
+resource "azurerm_key_vault_secret" "storage_primary_key" {
+  name         = "gooclaim-storage-primary-key"
+  value        = module.storage.primary_access_key
+  key_vault_id = module.keyvault.vault_id
+
+  content_type = "text/plain; storage-account-primary-key"
+  tags         = merge(var.tags, { source = "terraform" })
+
+  depends_on = [module.keyvault]
+}
+
 # ─── Outputs ─────────────────────────────────────────────────────────────────
 
 output "aks_cluster_name" {
