@@ -15,19 +15,20 @@
 1. [What This Repo Provides](#what-this-repo-provides)
 2. [Platform Architecture](#platform-architecture)
 3. [Repository Structure](#repository-structure)
-4. [Reusable CI/CD Workflows](#reusable-cicd-workflows)
-5. [Service Scaffolding](#service-scaffolding)
-6. [Environment Ladder](#environment-ladder)
-7. [Repo Registry (22 Repos)](#repo-registry-22-repos)
-8. [3-UI Architecture](#3-ui-architecture)
-9. [Architecture Decisions](#architecture-decisions)
-10. [Key Invariants](#key-invariants)
-11. [Runbooks](#runbooks)
-12. [Postman Collections](#postman-collections)
-13. [Local Development](#local-development)
-14. [Required Secrets](#required-secrets)
-15. [Contributing](#contributing)
-16. [Getting Help](#getting-help)
+4. [Cloud Infrastructure (Terraform)](#cloud-infrastructure-terraform)
+5. [Reusable CI/CD Workflows](#reusable-cicd-workflows)
+6. [Service Scaffolding](#service-scaffolding)
+7. [Environment Ladder](#environment-ladder)
+8. [Repo Registry (22 Repos)](#repo-registry-22-repos)
+9. [3-UI Architecture](#3-ui-architecture)
+10. [Architecture Decisions](#architecture-decisions)
+11. [Key Invariants](#key-invariants)
+12. [Runbooks](#runbooks)
+13. [Postman Collections](#postman-collections)
+14. [Local Development](#local-development)
+15. [Required Secrets](#required-secrets)
+16. [Contributing](#contributing)
+17. [Getting Help](#getting-help)
 
 ---
 
@@ -165,11 +166,76 @@ gooclaim-infra/
 │   ├── runbooks/                     # deploy.md, rollback.md, incident-response.md
 │   └── service-readme-template.md    # README template for new service repos
 ├── postman/                          # API collections + environments per service
+├── terraform/                        # IaC for Azure deploys — see Cloud Infrastructure section
+│   ├── modules/                      # Reusable per-resource modules (aks, keyvault, postgres, ...)
+│   └── environments/                 # Per-env compositions (dev / nprd / prod)
 ├── CLAUDE.md                         # Root project memory (every service inherits)
 ├── CLAUDE_SESSION.md                 # Session log (architectural decisions + handoff notes)
 ├── CONTRIBUTING.md                   # Branch strategy, commit conventions, PR rules
 └── README.md                         # This file
 ```
+
+---
+
+## Cloud Infrastructure (Terraform)
+
+`terraform/` provisions the Azure infrastructure for each environment. Region is **locked to `centralindia`** (Mumbai) per DPDP §16 data residency mandate — no resource may be created in any other region.
+
+State lives in an Azure Storage backend (AAD-auth gated, blob versioning enabled, 90-day soft-delete). Live `terraform.tfvars`, plan files (`*.tfplan`), state files (`*.tfstate`), and any exported secret snapshots are gitignored — only `*.tfvars.example` templates and `.terraform.lock.hcl` are tracked.
+
+### Directory layout
+
+```
+terraform/
+├── modules/                     # Reusable resource modules — parameterised by var.environment
+│   ├── aks/                     # AKS cluster + Log Analytics (Workload Identity + OIDC issuer enabled)
+│   ├── keyvault/                # Key Vault (RBAC auth model, 90d soft-delete)
+│   ├── postgres/                # PG 16 Flexible Server (AAD admin + password admin)
+│   ├── redis/                   # Azure Cache for Redis (TLS 1.2, non-SSL disabled)
+│   ├── storage/                 # Storage Account (StorageV2, blob versioning + soft-delete)
+│   └── workload-identity/       # User-Assigned MI + federated cred for K8s ServiceAccounts (ESO + per-service)
+└── environments/
+    ├── dev/                     # Composition for dev — cheapest SKUs, public access enabled with firewall allowlist
+    │   ├── backend.tf           # State backend config
+    │   ├── main.tf              # Wires modules + outputs
+    │   ├── variables.tf
+    │   └── terraform.tfvars.example
+    ├── nprd/                    # (Day 6+) Larger SKUs, soak environment
+    └── prod/                    # (Week 9+) HA + private endpoints + GRS
+```
+
+### SKU progression by environment
+
+| Resource | dev | nprd | prod |
+|---|---|---|---|
+| AKS control plane | Free | Free | Standard (Uptime SLA) |
+| AKS nodes | 2× `Standard_D2s_v3` (autoscale 2-4) | 2× `Standard_D2s_v3` | 3× `Standard_D4s_v3` (autoscale 3-10) |
+| Postgres | `B_Standard_B1ms` (1 vCPU / 2GB / 32GB storage) | `GP_Standard_D2ds_v5` | `GP_Standard_D4ds_v5` + Zone-Redundant HA |
+| Redis | Basic C0 (250 MB) | Standard C1 (1 GB) | Premium P1 (6 GB, persistence on) |
+| Storage replication | LRS | LRS | GRS |
+| Key Vault SKU | Standard | Standard | Premium (HSM-backed) |
+| Network posture | Public access + firewall allowlist | Private endpoint + VNet integration | Private endpoint + VNet integration |
+
+### Usage
+
+```bash
+cd terraform/environments/<env>
+terraform init                  # First-time setup — wires state backend
+terraform plan -out=<env>.tfplan
+terraform apply <env>.tfplan
+```
+
+For `dev`, copy `terraform.tfvars.example` → `terraform.tfvars` and edit values locally (file is gitignored).
+
+### Hard rules
+
+- **Secrets never in code.** Postgres password, Redis access key, Storage keys → land in Key Vault, flow into pods via External Secrets Operator (ESO) using Workload Identity federation. No `*.tfvars` or shell heredocs with credentials.
+- **No region drift.** Every resource is `centralindia`. The dev composition rejects any other location at variable-validation time.
+- **State files never committed.** `*.tfstate`, `*.tfvars`, `*.tfplan`, kubeconfigs, and secret snapshots are all gitignored — see `.gitignore` for the full pattern list.
+- **Lock files tracked.** `.terraform.lock.hcl` is checked in so every contributor gets the same provider versions.
+- **Per-env Resource Groups.** dev, nprd, and prod each get their own RG (`gooclaim-rg-<env>`) — no cross-env resource sharing.
+
+See `CONTRIBUTING.md` for branch + commit conventions when adding new Terraform modules.
 
 ---
 
