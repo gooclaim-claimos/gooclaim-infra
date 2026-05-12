@@ -1,0 +1,59 @@
+# =============================================================================
+# Let's Encrypt ClusterIssuers — staging + prod
+# =============================================================================
+#
+# Two issuers:
+#   • letsencrypt-staging — for testing certs. Generous rate limits, but
+#                           returns FAKE certs (browser will warn). Use this
+#                           first when wiring a new domain or testing changes.
+#   • letsencrypt-prod    — real Let's Encrypt certs. Tight rate limits:
+#                           50 certs per domain per week. Only use after
+#                           staging validates.
+#
+# Both use HTTP-01 challenge via NGINX Ingress class.
+# Prerequisite: DNS A records pointing the cert's host to the NGINX LB IP.
+#
+# Apply:
+#   kubectl apply -f gooclaim-infra/helm/cert-manager/cluster-issuers.yaml
+#
+# Verify:
+#   kubectl get clusterissuer
+#   # Expected: both Ready=True
+# =============================================================================
+
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+  labels:
+    env: dev
+    purpose: testing-certs
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@gooclaim.com
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: nginx
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  labels:
+    env: dev
+    purpose: real-certs
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@gooclaim.com
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: nginx

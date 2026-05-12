@@ -1,0 +1,74 @@
+# =============================================================================
+# NGINX Ingress Controller — dev environment Helm values
+# =============================================================================
+#
+# Exposes a single Azure LoadBalancer that all dev ingress hosts hit.
+# Azure provisions a Public Standard SKU IP — capture it after install
+# and create the DNS A records (e.g. api-dev.gooclaim.com → <PUBLIC_IP>).
+#
+# Install command:
+#   helm install ingress-nginx ingress-nginx/ingress-nginx \
+#     --namespace ingress-nginx --create-namespace \
+#     --version 4.15.1 \
+#     -f gooclaim-infra/helm/ingress-nginx/values-dev.yaml
+#
+# After install:
+#   kubectl get svc -n ingress-nginx ingress-nginx-controller
+#   # External-IP column shows the Azure-assigned public IP — feed to DNS
+# =============================================================================
+
+controller:
+  replicaCount: 1  # dev — single replica; nprd/prod = 2+
+
+  # Service type LoadBalancer → triggers Azure to provision a Standard SKU IP
+  service:
+    enabled: true
+    type: LoadBalancer
+    externalTrafficPolicy: Local  # preserves client IP for rate limiting + logs
+    annotations:
+      # Azure LB health probe — points at NGINX healthz endpoint
+      service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path: /healthz
+      # Force Standard SKU LB (default is Basic in some regions)
+      # service.beta.kubernetes.io/azure-load-balancer-internal: "false"
+
+  # Resource limits — small for dev
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Watch all namespaces (default) — required so apps in any namespace can use this ingress
+  ingressClassResource:
+    name: nginx
+    enabled: true
+    default: true  # this is the default IngressClass for dev cluster
+
+  # Allow snippets in Ingress annotations (e.g. custom rewrite, rate-limit per host)
+  allowSnippetAnnotations: true
+
+  # Metrics (will be useful when we add Prometheus Day 5)
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: false  # we don't have Prometheus Operator yet
+
+  # Pod disruption budget — only kicks in when replicaCount >= 2
+  # podDisruptionBudget:
+  #   enabled: true
+  #   minAvailable: 1
+
+  # Auto-scaling — leave disabled for dev (manual replica count)
+  autoscaling:
+    enabled: false
+
+  # Public access — no source IP restriction in dev (Azure firewall handles it)
+  # In prod, restrict via:
+  # service:
+  #   loadBalancerSourceRanges:
+  #     - 0.0.0.0/0  # or specific CIDR allowlist
+
+defaultBackend:
+  enabled: false  # we'll let NGINX return its own 404

@@ -1,0 +1,59 @@
+# =============================================================================
+# cert-manager — dev environment Helm values
+# =============================================================================
+#
+# Provisions ACME (Let's Encrypt) certificates for ingress hosts.
+# ClusterIssuers (staging + prod) are applied separately — see cluster-issuers.yaml.
+#
+# Install command:
+#   helm install cert-manager jetstack/cert-manager \
+#     --namespace cert-manager --create-namespace \
+#     --version v1.20.2 \
+#     -f gooclaim-infra/helm/cert-manager/values-dev.yaml
+#
+# Verify post-install:
+#   kubectl get pods -n cert-manager   # 3 pods Running
+#   kubectl get crd | grep cert-manager.io  # CRDs registered
+# =============================================================================
+
+# Install CRDs as part of chart (alternative is `kubectl apply -f cert-manager.crds.yaml` separately)
+crds:
+  enabled: true
+  keep: true  # don't delete CRDs on chart uninstall
+
+replicaCount: 1  # dev — single replica; nprd/prod = 2+
+
+# Resource limits — dev defaults
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+webhook:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
+cainjector:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Prometheus metrics (will be useful when we add Prometheus on Day 5)
+prometheus:
+  enabled: true
+  servicemonitor:
+    enabled: false  # we don't have Prometheus Operator yet
