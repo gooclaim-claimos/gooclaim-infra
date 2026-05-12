@@ -25,9 +25,9 @@ variable "location" {
 }
 
 variable "kubernetes_version" {
-  description = "AKS Kubernetes version (use az aks get-versions to check supported)"
+  description = "AKS Kubernetes version. Use `az aks get-versions --location centralindia` to check supported. Default = Azure's recommended stable for the region."
   type        = string
-  default     = "1.29.0"
+  default     = "1.34"
 }
 
 variable "system_node_count" {
@@ -52,6 +52,12 @@ variable "system_node_vm_size" {
   description = "VM SKU for system nodes (dev = smallest sensible)"
   type        = string
   default     = "Standard_D2s_v3"
+}
+
+variable "admin_ip_allowlist" {
+  description = "Admin/developer public IPs allowed to reach KV / PG / Redis / Storage directly (dev only). Empty = AzureServices bypass only. Each entry should be a single IP (no CIDR — modules append /32 where needed)."
+  type        = list(string)
+  default     = []
 }
 
 variable "tags" {

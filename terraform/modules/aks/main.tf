@@ -77,6 +77,13 @@ resource "azurerm_kubernetes_cluster" "main" {
     # Only system pods on this pool (per Azure best practice)
     only_critical_addons_enabled = false
 
+    # Surge upgrade defaults — match what Azure auto-applies to avoid drift
+    upgrade_settings {
+      max_surge                     = "10%"
+      drain_timeout_in_minutes      = 0
+      node_soak_duration_in_minutes = 0
+    }
+
     tags = var.tags
   }
 

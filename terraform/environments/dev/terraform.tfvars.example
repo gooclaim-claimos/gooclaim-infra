@@ -19,11 +19,17 @@ resource_group_name   = "gooclaim-rg-dev"
 location              = "centralindia"
 
 # AKS sizing (smallest sensible for dev)
-kubernetes_version    = "1.29.0"
+kubernetes_version    = "1.34"
 system_node_count     = 2
 system_node_min_count = 2
 system_node_max_count = 4
 system_node_vm_size   = "Standard_D2s_v3"
+
+# Admin public IPv4s allowed to reach KV / PG / Redis / Storage directly (dev only).
+# Empty = cluster pods via Azure bypass only. Add your IPv4 if you need
+# psql / redis-cli from your laptop. Modules append /32 where needed.
+# admin_ip_allowlist = ["1.2.3.4"]
+admin_ip_allowlist = []
 
 # Tags applied to all resources
 tags = {
