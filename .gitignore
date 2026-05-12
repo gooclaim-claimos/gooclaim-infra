@@ -81,9 +81,20 @@ azure-cli-*.log
 secrets-dev.txt
 secrets-nprd.txt
 secrets-prod.txt
+secrets-*.txt
+secrets-*.md
 *-account-key.txt
 *-tfstate-key.txt
 machine-jwt-*.txt
+
+# Local-only credentials reference folder (Azure IDs / endpoints / client_ids / etc.)
+# Never commit. Per-env files live under it: azure-dev.md, azure-nprd.md, azure-prod.md
+.secrets/
+.secrets-*/
+
+# Local-only cloud progress logs — also contain endpoints/IDs
+AZURE_CLOUD_PROGRESS_LOG.md
+CLOUD_PROGRESS_LOG.md
 
 # Docker
 .dockerignore
