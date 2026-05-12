@@ -53,11 +53,37 @@ kubeconfig
 *_pb2.py
 *_pb2_grpc.py
 
-# Terraform
+# Terraform — never commit these
 **/.terraform/
 *.tfstate
 *.tfstate.backup
+*.tfstate.lock.info
 *.tfvars
+*.tfplan
+*.tfplan.binary
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+# Keep .terraform.lock.hcl tracked — providers lock file for reproducibility
+
+# Azure CLI + kubectl — local caches with sensitive tokens
+.azure/
+.kube/cache/
+.kube/config
+azure-cli-*.log
+
+# Per-env secrets snapshots (in case anyone exports them to disk)
+secrets-dev.txt
+secrets-nprd.txt
+secrets-prod.txt
+*-account-key.txt
+*-tfstate-key.txt
+machine-jwt-*.txt
 
 # Docker
 .dockerignore
