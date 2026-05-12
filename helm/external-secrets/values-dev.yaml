@@ -1,0 +1,83 @@
+# =============================================================================
+# External Secrets Operator (ESO) — dev environment Helm values
+# =============================================================================
+#
+# ESO bridges Azure Key Vault → Kubernetes Secrets.
+# This values file binds ESO to our `gooclaim-wi-eso-dev` User-Assigned MI via
+# Azure Workload Identity federation — no client secrets, no service principal.
+#
+# Federation contract (set up by Terraform module `workload-identity/`):
+#   • UAMI client_id:  <see .secrets/azure-dev.md → wi_eso_client_id>
+#   • Federated subject: system:serviceaccount:external-secrets:external-secrets
+#   • Role on Key Vault: Key Vault Secrets User
+#
+# Install command:
+#   helm repo add external-secrets https://charts.external-secrets.io
+#   helm repo update
+#   helm install external-secrets external-secrets/external-secrets \
+#     --namespace external-secrets --create-namespace \
+#     --version 2.4.1 \
+#     -f gooclaim-infra/helm/external-secrets/values-dev.yaml \
+#     --set-string "serviceAccount.annotations.azure\.workload\.identity/client-id=<UAMI-client-id>"
+#
+# After install:
+#   • Apply ClusterSecretStore CRD (see helm/external-secrets/cluster-secret-store.yaml)
+#   • Verify: kubectl get clustersecretstore gooclaim-azurekv-dev → Ready
+# =============================================================================
+
+# Override the default install name and namespace
+installCRDs: true
+replicaCount: 1                    # dev — single replica; nprd/prod = 2+
+
+# Workload Identity binding
+# CRITICAL: the SA annotations + pod label below are how ESO authenticates to AKV.
+serviceAccount:
+  create: true
+  name: external-secrets
+  # Annotations are injected by --set-string at install time so the UAMI
+  # client_id never lands in committed YAML. Start with an empty map so
+  # Helm can merge --set additions.
+  annotations: {}
+
+podLabels:
+  # Required by Azure Workload Identity webhook to inject the projected token
+  azure.workload.identity/use: "true"
+
+# Resource limits — keep small for dev
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+webhook:
+  podLabels:
+    azure.workload.identity/use: "true"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+certController:
+  podLabels:
+    azure.workload.identity/use: "true"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Metrics + healthchecks
+metrics:
+  service:
+    enabled: true
+
+# Concurrent reconciles
+concurrent: 5
