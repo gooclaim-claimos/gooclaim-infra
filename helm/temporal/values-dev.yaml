@@ -1,0 +1,99 @@
+# =============================================================================
+# Temporal — dev environment Helm values (chart 1.2.0, app 1.31.0)
+# =============================================================================
+#
+# Persistence: external Postgres (gooclaim-pg-dev) — 2 databases pre-created:
+#   • temporal              — main store (history, namespaces, tasks)
+#   • temporal_visibility   — search/list queries (SQL visibility — no ES)
+#
+# Required: K8s Secret `temporal-pg` (created via temporal-pg-secret.yaml) with
+# key `password` sourced from AKV `gooclaim-postgres-admin-password`.
+#
+# Install:
+#   kubectl apply -f gooclaim-infra/helm/temporal/temporal-pg-secret.yaml
+#   kubectl get secret temporal-pg -n temporal      # verify materialized
+#   helm install temporal temporal/temporal \
+#     --namespace temporal --create-namespace \
+#     --version 1.2.0 \
+#     -f gooclaim-infra/helm/temporal/values-dev.yaml \
+#     --timeout=15m
+#
+# Verify:
+#   kubectl get pods -n temporal             # frontend/history/matching/worker/web/admintools Running
+#   kubectl port-forward -n temporal svc/temporal-web 8080:8080
+#   # then browse http://localhost:8080
+# =============================================================================
+
+server:
+  enabled: true
+  replicaCount: 1   # dev — single replica per service
+
+  # Persistence configuration (chart v1.x — datastores map structure)
+  config:
+    persistence:
+      datastores:
+        default:
+          sql:
+            createDatabase: false   # we pre-created via psql one-shot pod
+            manageSchema: true      # let chart run schema-setup + schema-update
+            pluginName: postgres12_pgx
+            databaseName: temporal
+            connectAddr: gooclaim-pg-dev.postgres.database.azure.com:5432
+            connectProtocol: tcp
+            user: gooclaimadmin
+            existingSecret: temporal-pg
+            secretKey: password
+            tls:
+              enabled: true
+              enableHostVerification: true
+              serverName: gooclaim-pg-dev.postgres.database.azure.com
+        visibility:
+          sql:
+            createDatabase: false
+            manageSchema: true
+            pluginName: postgres12_pgx
+            databaseName: temporal_visibility
+            connectAddr: gooclaim-pg-dev.postgres.database.azure.com:5432
+            connectProtocol: tcp
+            user: gooclaimadmin
+            existingSecret: temporal-pg
+            secretKey: password
+            tls:
+              enabled: true
+              enableHostVerification: true
+              serverName: gooclaim-pg-dev.postgres.database.azure.com
+
+  # Per-service resource asks — dev sized
+  frontend:
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits:   { cpu: 500m, memory: 512Mi }
+  history:
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits:   { cpu: 500m, memory: 512Mi }
+  matching:
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits:   { cpu: 500m, memory: 512Mi }
+  worker:
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits:   { cpu: 200m, memory: 256Mi }
+
+# Schema setup — controlled per-datastore via `manageSchema: true` above
+# (chart v1.x removed the top-level `schema.setup` / `schema.update` keys)
+
+# Web UI (Temporal Web)
+web:
+  enabled: true
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 8080
+  ingress:
+    enabled: false   # exposed via separate Ingress manifest (Day 5+, internal-only for v1.0)
+
+# Admin tools pod (tctl, schema utilities)
+admintools:
+  enabled: true

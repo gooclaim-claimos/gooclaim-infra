@@ -1,0 +1,112 @@
+# =============================================================================
+# kube-prometheus-stack — dev environment Helm values
+# =============================================================================
+#
+# Bundle includes:
+#   • Prometheus Operator (manages Prometheus/ServiceMonitor CRDs)
+#   • Prometheus server (metrics scrape + storage)
+#   • Alertmanager (alert routing — Slack/PagerDuty integration later)
+#   • Grafana (dashboards, pre-loaded with K8s + node-exporter dashboards)
+#   • kube-state-metrics + node-exporter (cluster + node-level metrics)
+#
+# Install:
+#   helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+#     --namespace monitoring --create-namespace \
+#     --version 85.0.2 \
+#     -f gooclaim-infra/helm/kube-prometheus-stack/values-dev.yaml
+#
+# After install:
+#   kubectl get pods -n monitoring          # ~10 pods Running
+#   kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
+#   # then browse http://localhost:3000 (admin / <see grafana.adminPassword>)
+# =============================================================================
+
+# Disable some heavy components for dev to save resources
+defaultRules:
+  create: true  # alerting rules for K8s health
+
+# ─── Prometheus ──────────────────────────────────────────────────────────────
+prometheus:
+  prometheusSpec:
+    # Storage: 7-day retention for dev (prod: 30+ days)
+    retention: 7d
+    retentionSize: ""    # uncapped by size; just by time
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: managed-csi
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+    # Resource asks — dev sized
+    resources:
+      requests: { cpu: 100m, memory: 512Mi }
+      limits:   { cpu: 500m, memory: 1Gi }
+    # Allow ServiceMonitors from any namespace (apps will create their own)
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+# ─── Alertmanager ────────────────────────────────────────────────────────────
+alertmanager:
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: managed-csi
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 2Gi
+    resources:
+      requests: { cpu: 10m, memory: 64Mi }
+      limits:   { cpu: 100m, memory: 128Mi }
+
+# ─── Grafana ─────────────────────────────────────────────────────────────────
+grafana:
+  enabled: true
+  # Persistent storage so dashboard customizations survive restarts
+  persistence:
+    enabled: true
+    storageClassName: managed-csi
+    size: 5Gi
+    accessModes: ["ReadWriteOnce"]
+
+  # Admin password — set at install time via --set so it never lands in committed YAML
+  # adminPassword: <inject at install>
+
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { cpu: 200m, memory: 256Mi }
+
+  # Default datasources: Prometheus auto-wired
+  # Loki added Day 5 via separate ConfigMap once Loki is installed
+  defaultDashboardsEnabled: true
+  defaultDashboardsTimezone: Asia/Kolkata
+
+  # Service: ClusterIP (Ingress exposes via grafana.dev.gooclaim.com)
+  service:
+    type: ClusterIP
+
+  # Ingress is managed separately (see ingress-grafana.yaml in this dir)
+  ingress:
+    enabled: false
+
+# ─── kube-state-metrics ──────────────────────────────────────────────────────
+kube-state-metrics:
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits:   { cpu: 100m, memory: 64Mi }
+
+# ─── node-exporter ───────────────────────────────────────────────────────────
+prometheus-node-exporter:
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits:   { cpu: 100m, memory: 64Mi }
+
+# ─── prometheus-operator (the operator itself) ───────────────────────────────
+prometheusOperator:
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits:   { cpu: 200m, memory: 256Mi }
