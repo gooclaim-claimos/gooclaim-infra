@@ -52,8 +52,9 @@ cainjector:
       cpu: 100m
       memory: 128Mi
 
-# Prometheus metrics (will be useful when we add Prometheus on Day 5)
+# Prometheus metrics — ServiceMonitor enabled (Day 6 — kube-prometheus-stack live)
 prometheus:
   enabled: true
   servicemonitor:
-    enabled: false  # we don't have Prometheus Operator yet
+    enabled: true
+    interval: 30s

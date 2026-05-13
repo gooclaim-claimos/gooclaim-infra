@@ -1,0 +1,34 @@
+{{- if and .Values.ingress.enabled .Values.ingress.host -}}
+{{- $fullname := include "gooclaim-service.fullname" . -}}
+{{- $secretName := default (printf "%s-tls" $fullname) .Values.ingress.tlsSecretName -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "gooclaim-service.labels" . | nindent 4 }}
+  annotations:
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuer | quote }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      secretName: {{ $secretName }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          {{- range .Values.ingress.paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ $fullname }}
+                port:
+                  number: {{ $.Values.service.port }}
+          {{- end }}
+{{- end }}

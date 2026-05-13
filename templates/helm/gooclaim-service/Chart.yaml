@@ -1,0 +1,31 @@
+apiVersion: v2
+name: gooclaim-service
+description: |
+  Golden Helm chart for Gooclaim platform services.
+  Each of the 16 microservices copies this chart structure into their own repo
+  (e.g. gooclaim-auth/helm/gooclaim-auth/) and overrides values.yaml for the
+  service-specific image, ports, secrets, and ingress hostname.
+
+  Rendered Kubernetes resources:
+    • Namespace            (optional)
+    • ServiceAccount       (with workload-identity annotation for AKV access)
+    • Deployment           (single replica for dev; HPA on for nprd/prod)
+    • Service              (ClusterIP)
+    • Ingress              (only when host set — letsencrypt-prod cert auto-issue)
+    • ExternalSecret       (sources secrets from AKV via ClusterSecretStore)
+    • ConfigMap            (non-sensitive env vars)
+    • ServiceMonitor       (Prometheus scrape — only when prometheus.enabled)
+    • PodDisruptionBudget  (only when replicaCount > 1)
+    • HorizontalPodAutoscaler (only when autoscaling.enabled)
+
+type: application
+version: 0.1.0           # chart version — bump on chart-template change
+appVersion: "0.1.0"      # default app image tag — override per service
+maintainers:
+  - name: Gooclaim Platform Team
+    email: admin@gooclaim.com
+keywords:
+  - gooclaim
+  - claims
+  - india
+  - insurance

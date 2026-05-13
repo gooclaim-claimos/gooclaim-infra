@@ -123,6 +123,22 @@ module "storage" {
   tags = var.tags
 }
 
+# ─── Azure Container Registry ────────────────────────────────────────────────
+
+module "acr" {
+  source = "../../modules/acr"
+
+  environment              = var.environment
+  location                 = data.azurerm_resource_group.main.location
+  resource_group_name      = data.azurerm_resource_group.main.name
+  aks_kubelet_principal_id = module.aks.kubelet_identity_object_id
+
+  public_network_access_enabled = true
+  sku                           = "Standard"
+
+  tags = var.tags
+}
+
 # ─── Workload Identity for External Secrets Operator ─────────────────────────
 
 module "wi_eso" {
@@ -248,6 +264,16 @@ output "storage_primary_blob_endpoint" {
 output "wi_eso_client_id" {
   description = "Client ID for ESO Workload Identity — annotate this on the K8s SA"
   value       = module.wi_eso.client_id
+}
+
+output "acr_login_server" {
+  description = "ACR login server hostname — use for docker push/pull (e.g. gooclaimacrdev.azurecr.io)"
+  value       = module.acr.login_server
+}
+
+output "acr_name" {
+  description = "ACR name (no domain suffix)"
+  value       = module.acr.registry_name
 }
 
 output "subscription_id" {

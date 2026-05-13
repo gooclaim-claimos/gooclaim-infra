@@ -49,11 +49,12 @@ controller:
   # Allow snippets in Ingress annotations (e.g. custom rewrite, rate-limit per host)
   allowSnippetAnnotations: true
 
-  # Metrics (will be useful when we add Prometheus Day 5)
+  # Metrics — ServiceMonitor enabled (Day 6 — kube-prometheus-stack live)
   metrics:
     enabled: true
     serviceMonitor:
-      enabled: false  # we don't have Prometheus Operator yet
+      enabled: true
+      scrapeInterval: 30s
 
   # Pod disruption budget — only kicks in when replicaCount >= 2
   # podDisruptionBudget:
