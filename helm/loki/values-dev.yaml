@@ -106,4 +106,4 @@ monitoring:
   lokiCanary:
     enabled: false
   serviceMonitor:
-    enabled: false  # enable once we wire kube-prometheus-stack to scrape Loki
+    enabled: true   # Day 6 — kube-prometheus-stack scrapes Loki metrics
