@@ -98,6 +98,13 @@ pnpm db:migrate:rollback
 - Never log PHI fields (phone, name, claim_id in plaintext) — use hashed versions
 - Every automated decision must emit an audit event — no silent failures
 - Workflow versions are mandatory — every workflow has a version in registry.yml
+- **API versioning** — every service mounts ALL business routes under `/v1/*`. Infrastructure endpoints (`/health`, `/ready`, `/metrics`, `/docs`, `/openapi.json`) stay at root. Pattern in `main.py`:
+  ```python
+  v1 = APIRouter(prefix="/v1")
+  v1.include_router(some_router, prefix="/ops/things")
+  app.include_router(v1)
+  ```
+  Future breaking changes ship as `/v2/*` so v1 consumers keep working.
 
 ## Testing Rules
 
