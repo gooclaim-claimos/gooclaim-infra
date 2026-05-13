@@ -1,0 +1,42 @@
+# =============================================================================
+# Grafana Ingress — exposes grafana.dev.gooclaim.com over HTTPS
+# =============================================================================
+#
+# cert-manager auto-issues a Let's Encrypt cert via the prod ClusterIssuer.
+# Public access is allowed; auth gate is Grafana's own admin login.
+#
+# Apply:
+#   kubectl apply -f gooclaim-infra/helm/kube-prometheus-stack/ingress-grafana.yaml
+#
+# Verify:
+#   kubectl get certificate -n monitoring  # should show grafana-dev-tls Ready=True within ~60s
+#   curl -I https://grafana.dev.gooclaim.com  # should return 302 → /login
+# =============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana
+  namespace: monitoring
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # Force HTTPS — redirect plain HTTP requests
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - grafana.dev.gooclaim.com
+      secretName: grafana-dev-tls
+  rules:
+    - host: grafana.dev.gooclaim.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kube-prometheus-stack-grafana
+                port:
+                  number: 80

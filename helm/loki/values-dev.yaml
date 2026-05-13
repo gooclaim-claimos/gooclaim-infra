@@ -1,0 +1,109 @@
+# =============================================================================
+# Loki — dev environment Helm values
+# =============================================================================
+#
+# Single-binary mode for dev (simplest topology). Storage is PVC-backed
+# (managed-csi). For v1.1+ we'll switch to Azure Blob (gooclaimappdev/loki-chunks)
+# with Workload Identity for production-grade scale.
+#
+# Promtail ships pod logs to this Loki instance (see helm/promtail/values-dev.yaml).
+#
+# Install:
+#   helm install loki grafana/loki \
+#     --namespace monitoring --create-namespace \
+#     --version 7.0.0 \
+#     -f gooclaim-infra/helm/loki/values-dev.yaml
+#
+# Verify:
+#   kubectl get pods -n monitoring -l app.kubernetes.io/name=loki
+#   # then add Loki datasource in Grafana: http://loki.monitoring.svc.cluster.local:3100
+# =============================================================================
+
+deploymentMode: SingleBinary
+
+loki:
+  # Auth disabled (single-tenant within the cluster)
+  auth_enabled: false
+
+  # Schema config — required for index management
+  schemaConfig:
+    configs:
+      - from: 2026-05-01
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+
+  # Storage — filesystem on PVC for dev; Azure Blob for v1.1+
+  storage:
+    type: filesystem
+
+  # Limits — dev sized
+  limits_config:
+    retention_period: 168h          # 7 days for dev
+    max_query_lookback: 7d
+    ingestion_rate_mb: 16
+    ingestion_burst_size_mb: 32
+
+  # Disable analytics ping-home
+  analytics:
+    reporting_enabled: false
+
+  # Per-tenant runtime config (we don't multi-tenant in v1.0)
+  commonConfig:
+    replication_factor: 1   # SingleBinary, no replication needed
+
+  pattern_ingester:
+    enabled: false
+
+# ─── SingleBinary deployment ─────────────────────────────────────────────────
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: true
+    storageClass: managed-csi
+    size: 10Gi
+    accessModes:
+      - ReadWriteOnce
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+# Disable distributed mode components
+backend:
+  replicas: 0
+read:
+  replicas: 0
+write:
+  replicas: 0
+
+# Disable gateway (NGINX in front of Loki) — internal-only access for dev
+gateway:
+  enabled: false
+
+# Disable chunks-cache (memcached) for dev — saves resources
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+
+# Test pods that the chart spins up — disable to keep namespace clean
+test:
+  enabled: false
+
+# Disable monitoring sub-chart (uses its own Prometheus — we have ours already)
+monitoring:
+  selfMonitoring:
+    enabled: false
+    grafanaAgent:
+      installOperator: false
+  lokiCanary:
+    enabled: false
+  serviceMonitor:
+    enabled: false  # enable once we wire kube-prometheus-stack to scrape Loki

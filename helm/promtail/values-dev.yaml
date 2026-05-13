@@ -1,0 +1,54 @@
+# =============================================================================
+# Promtail — dev environment Helm values
+# =============================================================================
+#
+# DaemonSet that ships pod logs from every node to Loki. Reads from
+# /var/log/pods on each node.
+#
+# Install (AFTER Loki is up):
+#   helm install promtail grafana/promtail \
+#     --namespace monitoring \
+#     --version 6.17.1 \
+#     -f gooclaim-infra/helm/promtail/values-dev.yaml
+#
+# Verify:
+#   kubectl get ds -n monitoring promtail   # DESIRED == CURRENT == 2 (one per node)
+#   # Then query Grafana → Explore → Loki → {namespace="default"} to see logs
+# =============================================================================
+
+config:
+  # Loki endpoint within the cluster (no auth in dev — direct service, gateway disabled)
+  clients:
+    - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+
+  snippets:
+    # Standard pipeline: parse JSON, extract level, etc.
+    extraScrapeConfigs: |
+      # Default behaviour is fine for v1.0 — JSON-aware parsing happens
+      # at query time in Grafana via parser pipelines.
+
+# Resource asks per node (DaemonSet)
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# DaemonSet tolerations — run on all nodes including system pool
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+  - key: node-role.kubernetes.io/master
+    operator: Exists
+    effect: NoSchedule
+
+# ServiceMonitor — will be auto-discovered by kube-prometheus-stack
+serviceMonitor:
+  enabled: false  # enable once we want promtail metrics in Prometheus
+
+# Disable test pod
+test:
+  enabled: false
