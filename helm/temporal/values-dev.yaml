@@ -63,6 +63,15 @@ server:
               enableHostVerification: true
               serverName: gooclaim-pg-dev.postgres.database.azure.com
 
+    # Auto-create Temporal namespaces on install (chart's create-namespaces job)
+    # Without this, only `temporal-system` exists; Web UI errors looking for `default`.
+    namespaces:
+      create: true
+      namespace:
+        - name: default
+          retention: 168h
+          description: "Default Temporal namespace - Gooclaim workflows"
+
   # Per-service resource asks — dev sized
   frontend:
     resources:
