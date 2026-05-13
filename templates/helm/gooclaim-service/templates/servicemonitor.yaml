@@ -1,0 +1,17 @@
+{{- if .Values.prometheus.enabled -}}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "gooclaim-service.fullname" . }}
+  labels:
+    {{- include "gooclaim-service.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "gooclaim-service.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: {{ .Values.prometheus.port | default "http" }}
+      path: {{ .Values.prometheus.path | default "/metrics" }}
+      interval: {{ .Values.prometheus.interval | default "30s" }}
+      honorLabels: true
+{{- end }}

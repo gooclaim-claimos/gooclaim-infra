@@ -28,6 +28,14 @@ server:
   enabled: true
   replicaCount: 1   # dev — single replica per service
 
+  # Prometheus metrics scrape — ServiceMonitor enabled (Day 6)
+  metrics:
+    annotations:
+      enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+
   # Persistence configuration (chart v1.x — datastores map structure)
   config:
     persistence:

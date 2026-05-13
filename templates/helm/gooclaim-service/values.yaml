@@ -1,0 +1,158 @@
+# =============================================================================
+# Default values for gooclaim-service chart.
+# Each service repo (gooclaim-auth, gooclaim-engine, etc.) overrides these.
+# =============================================================================
+
+# Used as the prefix for all generated resource names. Override per service.
+# Final names look like: {{ name }}-{{ tier }}-{{ kind suffix }}
+name: gooclaim-service-template
+nameOverride: ""
+fullnameOverride: ""
+
+# Pod replication
+replicaCount: 1
+
+# Container image — push to ACR, reference here
+image:
+  repository: gooclaimacrdev.azurecr.io/gooclaim-service-template
+  tag: 0.1.0
+  pullPolicy: IfNotPresent
+
+# Service Account — annotated with Workload Identity client_id when secretsFromAkv
+serviceAccount:
+  create: true
+  name: ""    # defaults to chart fullname
+  annotations: {}
+  # workloadIdentityClientId: ""   # set when service needs to pull from AKV
+
+# Deployment configuration
+deployment:
+  # Probes hit the app's /healthz and /readyz routes by default
+  livenessProbe:
+    httpGet:
+      path: /healthz
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /readyz
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  # Lifecycle: drain queue cleanly on SIGTERM (services should listen for it)
+  terminationGracePeriodSeconds: 30
+  # Pod-level security
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+  # If service needs writable temp dir, mount an emptyDir
+  extraVolumeMounts: []
+  extraVolumes: []
+
+# Ports — single HTTP port by default; override for multi-port services
+ports:
+  - name: http
+    containerPort: 8000
+    protocol: TCP
+
+# Resource requests/limits — dev defaults; override per service in nprd/prod
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Service (front of the pods)
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: http
+
+# Ingress — only created when host is non-empty
+ingress:
+  enabled: false
+  className: nginx
+  host: ""                                       # e.g. "auth.dev.gooclaim.com"
+  tlsSecretName: ""                              # default {{ fullname }}-tls
+  clusterIssuer: letsencrypt-prod                # or letsencrypt-staging
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  paths:
+    - path: /
+      pathType: Prefix
+
+# External Secrets — fetch from gooclaim-azurekv-dev (or per-env CSS)
+secretsFromAkv:
+  enabled: false
+  clusterSecretStore: gooclaim-azurekv-dev
+  refreshInterval: 1h
+  # List of (k8s-secret-key, akv-secret-name) mappings
+  data: []
+  # Example:
+  # data:
+  #   - secretKey: JWT_PRIVATE_KEY
+  #     remoteRef: gooclaim-auth-jwt-private-key
+  #   - secretKey: DB_PASSWORD
+  #     remoteRef: gooclaim-postgres-admin-password
+
+# ConfigMap — non-sensitive env vars
+configMap:
+  enabled: false
+  data: {}
+  # Example:
+  # data:
+  #   LOG_LEVEL: INFO
+  #   POSTGRES_HOST: gooclaim-pg-dev.postgres.database.azure.com
+  #   POSTGRES_DB: gooclaim_auth
+
+# Pod env vars (in addition to ConfigMap + Secret references)
+env: []
+# - name: SERVICE_NAME
+#   value: gooclaim-auth
+
+# Reference Secret + ConfigMap as envFrom (cleaner than listing each var)
+envFromSecret: true       # true → mount the ExternalSecret-managed Secret
+envFromConfigMap: true    # true → mount the ConfigMap
+
+# Prometheus ServiceMonitor — autodiscovered by kube-prometheus-stack
+prometheus:
+  enabled: false
+  port: http
+  path: /metrics
+  interval: 30s
+
+# Pod Disruption Budget — only when replicaCount > 1
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Pod labels + annotations (extra)
+podLabels: {}
+podAnnotations: {}
+
+# Affinity / Tolerations / NodeSelector
+nodeSelector: {}
+tolerations: []
+affinity: {}

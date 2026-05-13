@@ -93,8 +93,17 @@ grafana:
       maxSurge: 0
       maxUnavailable: 1
 
-  # Default datasources: Prometheus auto-wired
-  # Loki added Day 5 via separate ConfigMap once Loki is installed
+  # Default datasources: Prometheus auto-wired by chart
+  # Loki added via additionalDataSources (Day 6)
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      access: proxy
+      url: http://loki.monitoring.svc.cluster.local:3100
+      jsonData:
+        maxLines: 1000
+        timeout: 60
+
   defaultDashboardsEnabled: true
   defaultDashboardsTimezone: Asia/Kolkata
 
