@@ -76,9 +76,22 @@ grafana:
   # Admin password — set at install time via --set so it never lands in committed YAML
   # adminPassword: <inject at install>
 
+  # Bumped to 768Mi limit — Grafana 13.x with all default dashboards + plugin
+  # auto-updater exceeds 256Mi cap (observed 304Mi steady-state, OOMKill loop)
   resources:
-    requests: { cpu: 50m, memory: 128Mi }
-    limits:   { cpu: 200m, memory: 256Mi }
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 768Mi }
+
+  # PVC is RWO + only 1 replica. Use rollingUpdate with maxSurge=0 +
+  # maxUnavailable=1 — equivalent to Recreate semantics (old pod stops before
+  # new pod starts → no Multi-Attach error on RWO volume) but stays compatible
+  # with helm rolling-update validation. Strict Recreate type would need full
+  # Deployment recreation which Helm can't do in-place.
+  deploymentStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
 
   # Default datasources: Prometheus auto-wired
   # Loki added Day 5 via separate ConfigMap once Loki is installed
