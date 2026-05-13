@@ -65,6 +65,12 @@ variable "public_network_access_enabled" {
   default     = true
 }
 
+variable "enabled_extensions" {
+  description = "Postgres extensions to allow-list via `azure.extensions` server parameter. Azure Postgres Flexible Server requires explicit allow-listing — without this, `CREATE EXTENSION` fails for non-default extensions. Comma-separated list, lowercase per PG convention."
+  type        = string
+  default     = "btree_gin,btree_gist,pg_trgm,pg_stat_statements,uuid-ossp,pgcrypto,vector"
+}
+
 variable "allowed_admin_ips" {
   description = "Individual admin IPs to firewall-allow (only used when public access enabled). Excludes the AzureServices bypass which is always added."
   type        = list(string)

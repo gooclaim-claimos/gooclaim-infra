@@ -106,3 +106,14 @@ resource "azurerm_postgresql_flexible_server_firewall_rule" "admin_ip" {
   start_ip_address = each.value
   end_ip_address   = each.value
 }
+
+# ─── azure.extensions — allow-list extensions used by platform ───────────────
+# Without this, CREATE EXTENSION fails for non-default extensions. Temporal's
+# visibility schema needs btree_gin; L3 Knowledge Layer uses vector (pgvector);
+# multiple services use pg_trgm / pgcrypto.
+
+resource "azurerm_postgresql_flexible_server_configuration" "extensions" {
+  name      = "azure.extensions"
+  server_id = azurerm_postgresql_flexible_server.main.id
+  value     = var.enabled_extensions
+}
