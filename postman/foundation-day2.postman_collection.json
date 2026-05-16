@@ -1,0 +1,265 @@
+{
+  "info": {
+    "name": "Gooclaim — Foundation Day 2 (S2)",
+    "description": "Newman smoke gate for the 8 S2 endpoints across 4 services.\n\nRun: newman run postman/foundation-day2.postman_collection.json -e postman/foundation-day2.postman_environment.json\n\nThe first request (POST /v1/auth/login) mints a JWT and stashes it as the `access_token` collection variable; every subsequent request consumes it via `Authorization: Bearer {{access_token}}`.\n\nEvery request asserts:\n  - HTTP 200 (or the per-endpoint expected code)\n  - JSON body parses\n  - Response shape matches the OpenAPI spec field names\n\nNot a contract test (no full schema validation) — that lives in the per-service test suites. This collection is the post-deploy smoke gate: did all 8 endpoints come up alive after a fresh image bake?",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url_auth", "value": "https://api.dev.gooclaim.com" },
+    { "key": "base_url_audit", "value": "https://api.dev.gooclaim.com" },
+    { "key": "base_url_engine", "value": "https://api.dev.gooclaim.com" },
+    { "key": "base_url_hub", "value": "https://api.dev.gooclaim.com" },
+    { "key": "test_email", "value": "admin@gooclaim.com" },
+    { "key": "test_password", "value": "Admin123!@#Strong" },
+    { "key": "tenant_id", "value": "system" },
+    { "key": "access_token", "value": "" },
+    { "key": "session_id", "value": "" },
+    { "key": "user_id", "value": "" },
+    { "key": "test_phone_hash", "value": "0000000000000000000000000000000000000000000000000000000000000000" },
+    { "key": "test_notification_id", "value": "00000000-0000-0000-0000-000000000000" }
+  ],
+  "item": [
+    {
+      "name": "0. Login (mint token)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('login returns 200', () => pm.response.to.have.status(200));",
+              "var r = pm.response.json();",
+              "pm.test('access_token returned', () => pm.expect(r.access_token).to.be.a('string'));",
+              "pm.collectionVariables.set('access_token', r.access_token);",
+              "if (r.session_id) pm.collectionVariables.set('session_id', r.session_id);",
+              "if (r.user_id) pm.collectionVariables.set('user_id', r.user_id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url_auth}}/v1/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\",\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "1. GET /v1/auth/me",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "var r = pm.response.json();",
+              "pm.test('user_id present', () => pm.expect(r.user_id).to.be.a('string'));",
+              "pm.test('tenant_id present', () => pm.expect(r.tenant_id).to.be.a('string'));",
+              "pm.test('roles is array', () => pm.expect(r.roles).to.be.an('array'));",
+              "pm.test('mfa_verified is boolean', () => pm.expect(r.mfa_verified).to.be.a('boolean'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+        "url": "{{base_url_auth}}/v1/auth/me"
+      }
+    },
+    {
+      "name": "2. GET /v1/notifications",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "var r = pm.response.json();",
+              "pm.test('items is array', () => pm.expect(r.items).to.be.an('array'));",
+              "pm.test('total is number', () => pm.expect(r.total).to.be.a('number'));",
+              "pm.test('unread is number', () => pm.expect(r.unread).to.be.a('number'));",
+              "if (r.items.length > 0) {",
+              "  pm.collectionVariables.set('test_notification_id', r.items[0].id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+        "url": {
+          "raw": "{{base_url_auth}}/v1/notifications?limit=10",
+          "host": ["{{base_url_auth}}"],
+          "path": ["v1", "notifications"],
+          "query": [{ "key": "limit", "value": "10" }]
+        }
+      }
+    },
+    {
+      "name": "3. POST /v1/notifications/read-all",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "var r = pm.response.json();",
+              "pm.test('marked is number', () => pm.expect(r.marked).to.be.a('number'));",
+              "pm.test('marked >= 0', () => pm.expect(r.marked).to.be.at.least(0));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+        "url": "{{base_url_auth}}/v1/notifications/read-all"
+      }
+    },
+    {
+      "name": "4. GET /v1/service-accounts",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "var r = pm.response.json();",
+              "pm.test('items is array', () => pm.expect(r.items).to.be.an('array'));",
+              "pm.test('total is number', () => pm.expect(r.total).to.be.a('number'));",
+              "// secret_hash must NEVER appear in list view",
+              "var hasSecret = r.items.some(it => 'secret' in it || 'secret_hash' in it);",
+              "pm.test('no secret leaked in list', () => pm.expect(hasSecret).to.equal(false));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+        "url": "{{base_url_auth}}/v1/service-accounts"
+      }
+    },
+    {
+      "name": "5. POST /v1/admin/break-glass/request (smoke — may 403 if non-SUPER_ADMIN)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// SUPER_ADMIN test users get 200; other roles get 403.",
+              "// Either is a green smoke — proves the endpoint is alive + auth-gated correctly.",
+              "pm.test('200 or 403 (role-gated)', () => pm.expect([200, 403]).to.include(pm.response.code));",
+              "if (pm.response.code === 200) {",
+              "  var r = pm.response.json();",
+              "  pm.test('session_id returned', () => pm.expect(r.session_id).to.be.a('string'));",
+              "  pm.test('status PENDING', () => pm.expect(r.status).to.equal('PENDING'));",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{base_url_auth}}/v1/admin/break-glass/request",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reason\": \"Newman smoke — foundation-day2 collection\",\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "6. GET /v1/audit/events",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "var r = pm.response.json();",
+              "pm.test('items is array', () => pm.expect(r.items).to.be.an('array'));",
+              "pm.test('total is number', () => pm.expect(r.total).to.be.a('number'));",
+              "// next_cursor is null when no more rows, or a non-empty string otherwise",
+              "pm.test('next_cursor is null or string', () => pm.expect(r.next_cursor === null || typeof r.next_cursor === 'string').to.equal(true));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+        "url": {
+          "raw": "{{base_url_audit}}/v1/audit/events?limit=10",
+          "host": ["{{base_url_audit}}"],
+          "path": ["v1", "audit", "events"],
+          "query": [{ "key": "limit", "value": "10" }]
+        }
+      }
+    },
+    {
+      "name": "7. GET /v1/consent/status",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// 200 even when no record exists — consent_given=false carries the no-record case.",
+              "// 400 if tenant_id in JWT is not UUID-shape (e.g. 'system' literal).",
+              "pm.test('200 or 400 (handler validation)', () => pm.expect([200, 400]).to.include(pm.response.code));",
+              "if (pm.response.code === 200) {",
+              "  var r = pm.response.json();",
+              "  pm.test('consent_given is boolean', () => pm.expect(r.consent_given).to.be.a('boolean'));",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+        "url": {
+          "raw": "{{base_url_engine}}/v1/consent/status?phone_hash={{test_phone_hash}}",
+          "host": ["{{base_url_engine}}"],
+          "path": ["v1", "consent", "status"],
+          "query": [{ "key": "phone_hash", "value": "{{test_phone_hash}}" }]
+        }
+      }
+    },
+    {
+      "name": "8. GET /v1/integrations",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "var r = pm.response.json();",
+              "pm.test('tenant_id present', () => pm.expect(r.tenant_id).to.be.a('string'));",
+              "pm.test('items is array', () => pm.expect(r.items).to.be.an('array'));",
+              "pm.test('total matches items.length', () => pm.expect(r.total).to.equal(r.items.length));",
+              "if (r.items.length > 0) {",
+              "  var item = r.items[0];",
+              "  pm.test('item has name', () => pm.expect(item.name).to.be.a('string'));",
+              "  pm.test('item has type cms|doc', () => pm.expect(['cms', 'doc']).to.include(item.type));",
+              "  pm.test('item has CB state', () => pm.expect(['CLOSED','OPEN','HALF_OPEN']).to.include(item.circuit_breaker_state));",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+        "url": "{{base_url_hub}}/v1/integrations"
+      }
+    }
+  ]
+}
