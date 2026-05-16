@@ -1,0 +1,42 @@
+{
+  "name": "@gooclaim/shared",
+  "version": "0.1.0",
+  "description": "Shared React + TypeScript primitives used by gooclaim-console, gooclaim-copilot, and gooclaim-portal. Auth hook, DataroomContext propagation, Tailwind preset, and shadcn config — kept here so the three frontends do not drift on cross-cutting concerns.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    },
+    "./hooks/useAuth": {
+      "import": "./src/hooks/useAuth.ts",
+      "types": "./src/hooks/useAuth.ts"
+    },
+    "./components/DataroomProvider": {
+      "import": "./src/components/DataroomProvider.tsx",
+      "types": "./src/components/DataroomProvider.tsx"
+    },
+    "./lib/tailwind-preset": {
+      "import": "./src/lib/tailwind-preset.ts",
+      "types": "./src/lib/tailwind-preset.ts"
+    },
+    "./lib/components.json": "./src/lib/components.json"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "typescript": "^5"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ]
+}
