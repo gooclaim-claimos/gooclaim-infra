@@ -28,6 +28,12 @@ on:
         options: [dev, nprd, prod]
         default: dev
 
+# Required so the reusable workflow can mint an OIDC token for Azure login.
+# Reusable workflows can only USE permissions granted by the caller.
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
 
   resolve-env:
