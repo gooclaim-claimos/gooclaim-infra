@@ -58,3 +58,4 @@ jobs:
       service-name: __SERVICE_NAME__   # ← SIRF YEH CHANGE KARO per repo
       environment: ${{ needs.resolve-env.outputs.environment }}
       sha: ${{ github.sha }}
+    secrets: inherit
