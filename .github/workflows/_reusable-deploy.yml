@@ -98,9 +98,15 @@ jobs:
             ${{ steps.tag.outputs.env-latest }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # GH_PAT is required for the Dockerfile to clone the private
+          # gooclaim-shared dependency. Without it, pip install silently
+          # fails to clone, producing a broken image (uvicorn missing,
+          # crash-loops at startup). Pass via `secrets: inherit` on the
+          # calling workflow.
           build-args: |
             BUILD_ENV=${{ inputs.environment }}
             BUILD_SHA=${{ inputs.sha }}
+            GH_PAT=${{ secrets.GH_PAT }}
 
   deploy:
     name: helm upgrade → ${{ inputs.environment }} cluster
