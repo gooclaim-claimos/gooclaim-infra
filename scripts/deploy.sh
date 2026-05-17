@@ -1,10 +1,24 @@
 #!/bin/bash
 # scripts/deploy.sh
-# Usage: bash scripts/deploy.sh <env> <sha>
-# Called by GitHub Actions deploy jobs
-# Requires KUBE_CONFIG env var to be set
+#
+# ⚠️  DEPRECATED (2026-05-17, S4) — DO NOT USE
+#
+# This script assumes:
+#   • Registry = ghcr.io/gooclaim/* (we use gooclaimacrdev.azurecr.io)
+#   • Namespace = gooclaim-${env}  (we use single "gooclaim" namespace)
+#   • Services = L0/L1/L2/L3/L5/L6 names (renamed to gooclaim-* slugs)
+#   • Deploy method = kubectl set image (causes helm field-manager conflicts)
+#
+# Replaced by `.github/workflows/_reusable-deploy.yml` (helm-based, ACR-based,
+# OIDC-authenticated). See that file + templates/.github/workflows/deploy.yml
+# for the current pattern.
+#
+# Kept for historical reference only.
 
 set -euo pipefail
+echo "❌ This script is deprecated. Use the GitHub Actions Deploy workflow instead."
+echo "   See gooclaim-infra/.github/workflows/_reusable-deploy.yml"
+exit 1
 
 ENV=$1
 SHA=$2
