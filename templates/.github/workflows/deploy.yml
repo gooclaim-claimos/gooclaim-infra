@@ -1,19 +1,32 @@
 # .github/workflows/deploy.yml
-# Yeh file har service repo mein hogi — sirf service-name change karo
-# Baaki sab gooclaim-infra/_reusable-deploy.yml se aata hai
+#
+# Per-repo deploy entry point. SIRF service-name change karo neeche.
+# Real logic gooclaim-infra/_reusable-deploy.yml mein hai.
+#
+# Triggers:
+#   develop push → dev (auto)
+#   main push    → does NOTHING (build the image only on tag/dispatch)
+#   tag v*       → build only; dispatch to deploy nprd/prod
+#   workflow_dispatch → user picks env (dev/nprd/prod)
+#
+# Required repo variables (set once via `gh variable set`):
+#   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID,
+#   ACR_LOGIN_SERVER, ACR_NAME,
+#   AKS_CLUSTER_DEV, AKS_RG_DEV, AKS_NAMESPACE
 
 name: Deploy
 
 on:
   push:
-    branches: [main, develop]
+    branches: [develop]
   workflow_dispatch:
     inputs:
       environment:
         description: Target environment
         required: true
         type: choice
-        options: [dev, sdx, nprd, prod]
+        options: [dev, nprd, prod]
+        default: dev
 
 jobs:
 
@@ -22,28 +35,20 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.set.outputs.environment }}
-      environment_upper: ${{ steps.set.outputs.environment_upper }}
     steps:
       - id: set
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            ENV="${{ github.event.inputs.environment }}"
-          elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
+            ENV="${{ inputs.environment }}"
+          else
             ENV="dev"
-          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            ENV="nprd"
           fi
-          echo "environment=${ENV}" >> $GITHUB_OUTPUT
-          echo "environment_upper=${ENV^^}" >> $GITHUB_OUTPUT
+          echo "environment=${ENV}" >> "$GITHUB_OUTPUT"
 
   deploy:
     needs: resolve-env
-    uses: gooclaim-claimos/gooclaim-infra/.github/workflows/_reusable-deploy.yml@main
+    uses: gooclaim-claimos/gooclaim-infra/.github/workflows/_reusable-deploy.yml@develop
     with:
-      service-name: gooclaim-service      # ← SIRF YEH CHANGE KARO har repo mein
+      service-name: __SERVICE_NAME__   # ← SIRF YEH CHANGE KARO per repo
       environment: ${{ needs.resolve-env.outputs.environment }}
       sha: ${{ github.sha }}
-    secrets:
-      KUBE_CONFIG: ${{ secrets[format('{0}_KUBE_CONFIG', needs.resolve-env.outputs.environment_upper)] }}
-      GHCR_TOKEN: ${{ secrets.GH_PAT }}
-      GH_PAT: ${{ secrets.GH_PAT }}

@@ -1,11 +1,25 @@
 # gooclaim-infra/.github/workflows/_reusable-deploy.yml
 #
-# MASTER DEPLOY WORKFLOW — sirf yahan update karo
-# ENV flow:
-#   develop merge → auto → dev
-#   manual dispatch → sdx
-#   main merge → auto → nprd
-#   manual dispatch + approval → prod
+# MASTER DEPLOY WORKFLOW — single source of truth for all 22 service repos.
+#
+# Architecture (S4 — 2026-05-17):
+#   • Registry:   gooclaimacrdev.azurecr.io (Azure Container Registry)
+#   • Cluster:    Azure AKS (single namespace "gooclaim" across envs;
+#                 nprd/prod clusters provisioned at S11)
+#   • Auth:       OIDC federated identity (no KUBE_CONFIG secret)
+#   • Deploy:     helm upgrade --install with per-env values overlay
+#                 (values.yaml base + values-<env>.yaml override if exists)
+#
+# Env gating:
+#   • dev:  auto on develop push (no GitHub UI protection — Team plan limit)
+#   • nprd: workflow_dispatch only; cluster vars provisioned at S11
+#   • prod: workflow_dispatch + main branch / vX.Y.Z tag; cluster vars at S11
+#
+# Required repo variables (set via `gh variable set` on each caller repo):
+#   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
+#   ACR_LOGIN_SERVER, ACR_NAME
+#   AKS_CLUSTER_DEV, AKS_RG_DEV, AKS_NAMESPACE
+#   (AKS_CLUSTER_NPRD / AKS_RG_NPRD / AKS_CLUSTER_PROD / AKS_RG_PROD added at S11)
 
 name: Reusable Deploy
 
@@ -15,76 +29,171 @@ on:
       service-name:
         required: true
         type: string
+        description: Service name (matches helm chart dir + ACR repo name)
       environment:
         required: true
         type: string
+        description: dev | nprd | prod
       sha:
         required: true
         type: string
-    secrets:
-      KUBE_CONFIG:
-        required: true
-      GHCR_TOKEN:
-        required: true
-      GH_PAT:
-        required: true
+        description: Git SHA used as image tag
+      helm-chart-path:
+        required: false
+        type: string
+        default: ""
+        description: Override helm chart path (default helm/<service-name>)
+      dockerfile-path:
+        required: false
+        type: string
+        default: ./Dockerfile
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
 
-  build-and-push:
-    name: Build & push → ${{ inputs.environment }}
+  build:
+    name: Build & push → ACR
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    outputs:
+      image-ref: ${{ steps.tag.outputs.image-ref }}
     steps:
       - uses: actions/checkout@v4
 
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: ACR login
+        run: az acr login --name "${{ vars.ACR_NAME }}"
+
+      - name: Compute image refs
+        id: tag
+        run: |
+          IMAGE_REPO="${{ vars.ACR_LOGIN_SERVER }}/${{ inputs.service-name }}"
+          IMAGE_REF="${IMAGE_REPO}:${{ inputs.sha }}"
+          ENV_LATEST="${IMAGE_REPO}:${{ inputs.environment }}-latest"
+          echo "image-ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
+          echo "env-latest=${ENV_LATEST}" >> "$GITHUB_OUTPUT"
+          echo "Image refs:"
+          echo "  primary:    ${IMAGE_REF}"
+          echo "  env-latest: ${ENV_LATEST}"
+
       - uses: docker/setup-buildx-action@v3
 
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
-
-      - uses: docker/build-push-action@v5
+      - name: Build & push
+        uses: docker/build-push-action@v5
         with:
           context: .
+          file: ${{ inputs.dockerfile-path }}
           push: true
           tags: |
-            ghcr.io/gooclaim-claimos/${{ inputs.service-name }}:${{ inputs.sha }}
-            ghcr.io/gooclaim-claimos/${{ inputs.service-name }}:${{ inputs.environment }}-latest
+            ${{ steps.tag.outputs.image-ref }}
+            ${{ steps.tag.outputs.env-latest }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
             BUILD_ENV=${{ inputs.environment }}
             BUILD_SHA=${{ inputs.sha }}
-            GH_PAT=${{ secrets.GH_PAT }}
 
   deploy:
-    name: Deploy → ${{ inputs.environment }}
+    name: helm upgrade → ${{ inputs.environment }} cluster
     runs-on: ubuntu-latest
-    needs: build-and-push
-    environment:
-      name: ${{ inputs.environment }}
-      url: https://${{ inputs.environment }}.gooclaim.internal
+    needs: build
+    environment: ${{ inputs.environment }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy ${{ inputs.service-name }} to ${{ inputs.environment }}
+      - name: Guard — nprd/prod clusters provisioned at S11
+        if: inputs.environment != 'dev'
         run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
-          chmod 600 ~/.kube/config
+          echo "⚠️  Non-dev cluster vars not provisioned yet (S11 work)."
+          echo "Build job pushed image to ACR successfully."
+          echo "Resume deploy after S11 provisions cluster vars."
+          exit 0
 
-          NAMESPACE="gooclaim-${{ inputs.environment }}"
-          IMAGE="ghcr.io/gooclaim-claimos/${{ inputs.service-name }}:${{ inputs.sha }}"
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-          kubectl set image deployment/${{ inputs.service-name }} \
-            ${{ inputs.service-name }}=$IMAGE \
-            -n $NAMESPACE
+      - name: Set AKS context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ vars.AKS_RG_DEV }}
+          cluster-name: ${{ vars.AKS_CLUSTER_DEV }}
+          admin: false
+          use-kubelogin: true
 
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+
+      - name: Resolve helm chart + env overlay
+        id: chart
+        run: |
+          if [ -n "${{ inputs.helm-chart-path }}" ]; then
+            CHART="${{ inputs.helm-chart-path }}"
+          else
+            CHART="helm/${{ inputs.service-name }}"
+          fi
+
+          if [ ! -d "$CHART" ]; then
+            echo "❌ Chart dir not found: $CHART"
+            ls -la helm/ 2>/dev/null || true
+            exit 1
+          fi
+          echo "chart=${CHART}" >> "$GITHUB_OUTPUT"
+
+          OVERLAY="${CHART}/values-${{ inputs.environment }}.yaml"
+          if [ -f "$OVERLAY" ]; then
+            echo "overlay-arg=--values ${OVERLAY}" >> "$GITHUB_OUTPUT"
+            echo "Using env overlay: $OVERLAY"
+          else
+            echo "overlay-arg=" >> "$GITHUB_OUTPUT"
+            echo "No env overlay (base values.yaml only)"
+          fi
+
+      - name: helm upgrade
+        run: |
+          helm upgrade --install \
+            "${{ inputs.service-name }}" \
+            "${{ steps.chart.outputs.chart }}" \
+            --namespace "${{ vars.AKS_NAMESPACE }}" \
+            --values "${{ steps.chart.outputs.chart }}/values.yaml" \
+            ${{ steps.chart.outputs.overlay-arg }} \
+            --set image.repository="${{ vars.ACR_LOGIN_SERVER }}/${{ inputs.service-name }}" \
+            --set image.tag="${{ inputs.sha }}" \
+            --wait \
+            --timeout=5m
+
+      - name: Verify rollout
+        run: |
           kubectl rollout status deployment/${{ inputs.service-name }} \
-            -n $NAMESPACE \
+            -n ${{ vars.AKS_NAMESPACE }} \
             --timeout=120s
+          kubectl get deployment/${{ inputs.service-name }} \
+            -n ${{ vars.AKS_NAMESPACE }} \
+            -o jsonpath='{"Running image: "}{.spec.template.spec.containers[0].image}{"\n"}'
 
-          echo "Deployed ${{ inputs.service-name }} → ${{ inputs.environment }}"
+      - name: Smoke test /health
+        run: |
+          SVC_HOST="${{ inputs.service-name }}"
+          INGRESS_HOST="${SVC_HOST#gooclaim-}.dev.gooclaim.com"
+          echo "Smoke testing https://${INGRESS_HOST}/health …"
+          for i in {1..10}; do
+            if curl -k -s -o /dev/null -w "%{http_code}" --max-time 5 "https://${INGRESS_HOST}/health" | grep -q "200"; then
+              echo "✅ /health returned 200"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "⚠️  /health did not return 200 after 30s — pod may still be coming up"
