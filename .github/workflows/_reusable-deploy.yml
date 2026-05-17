@@ -125,6 +125,13 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+      # Install kubelogin — required by azure/aks-set-context when use-kubelogin: true
+      # GitHub-hosted ubuntu-latest does not ship kubelogin.
+      - name: Install kubelogin
+        uses: azure/use-kubelogin@v1
+        with:
+          kubelogin-version: 'v0.1.4'
+
       - name: Set AKS context
         uses: azure/aks-set-context@v3
         with:
